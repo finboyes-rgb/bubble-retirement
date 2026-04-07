@@ -1,26 +1,98 @@
 @import "tailwindcss";
 
+/* ============================================
+   Fin's Design Tokens — Bubble Retirement
+   ============================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --c-bg:              #17130E;
+  --c-surface:         #231C14;
+  --c-border:          #4A3828;
+  --c-border-light:    #6A5242;
+
+  --c-accent-orange:   #FF4800;
+  --c-accent-yellow:   #F5DF00;
+
+  --c-text:            #EAE0D0;
+  --c-text-muted:      #A89880;
+  --c-text-dim:        #3D3028;
+
+  --font-body:         var(--font-space-grotesk), 'Space Grotesk', sans-serif;
+  --font-mono:         var(--font-space-mono), 'Space Mono', monospace;
+
+  --sp-1:   0.25rem;
+  --sp-2:   0.5rem;
+  --sp-3:   0.75rem;
+  --sp-4:   1rem;
+  --sp-6:   1.5rem;
+  --sp-8:   2rem;
+  --sp-12:  3rem;
+  --sp-16:  4rem;
+
+  --radius-card:   1.5rem;
+  --radius-sm:     0.5rem;
+
+  --border:        2px solid var(--c-border);
+  --border-light:  1px solid var(--c-border);
+  --border-accent: 2px solid var(--c-accent-orange);
+
+  --shadow:         4px 4px 0 var(--c-border);
+  --shadow-sm:      3px 3px 0 var(--c-border);
+  --shadow-accent:  5px 5px 0 var(--c-accent-orange);
+  --shadow-yellow:  5px 5px 0 var(--c-accent-yellow);
+
+  --t-fast:    100ms ease;
+  --t-base:    180ms ease;
+
+  --max-width:  1200px;
+  --page-pad:   var(--sp-8);
 }
 
+/* Base resets */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  background-color: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tailwind theme bridge */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg:             var(--c-bg);
+  --color-surface:        var(--c-surface);
+  --color-border:         var(--c-border);
+  --color-border-light:   var(--c-border-light);
+  --color-accent-orange:  var(--c-accent-orange);
+  --color-accent-yellow:  var(--c-accent-yellow);
+  --color-text:           var(--c-text);
+  --color-text-muted:     var(--c-text-muted);
+  --color-text-dim:       var(--c-text-dim);
+  --font-sans:            var(--font-body);
+  --font-mono:            var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Light mode */
+:root[data-theme="light"] {
+  --c-bg:              #F4EDE2;
+  --c-surface:         #EAE0D2;
+  --c-border:          #B8A080;
+  --c-border-light:    #C8B090;
+  --c-text:            #1A1008;
+  --c-text-muted:      #6B5040;
+  --c-text-dim:        #D0C0A8;
+  --shadow:            4px 4px 0 #B8A080;
+  --shadow-sm:         3px 3px 0 #B8A080;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Recharts tooltip override */
+.recharts-tooltip-wrapper {
+  outline: none;
 }
