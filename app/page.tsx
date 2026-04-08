@@ -155,6 +155,8 @@ export default function Home() {
     { value: 'review', label: 'Review' },
   ]
 
+  const chartBg = theme === 'dark' ? '#17130E' : '#E2D5C0'
+
   return (
     <div
       style={{
@@ -162,51 +164,47 @@ export default function Home() {
         background: 'var(--c-bg)',
         color: 'var(--c-text)',
         fontFamily: 'var(--font-body)',
+        position: 'relative',
+        zIndex: 1,
       }}
     >
       {/* Header */}
       <header
         style={{
           borderBottom: '2px solid var(--c-border)',
-          padding: '12px 24px',
+          padding: '16px 32px',
           display: 'flex',
           alignItems: 'center',
-          gap: 16,
+          gap: 24,
         }}
       >
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 13,
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            color: 'var(--c-accent-orange)',
-            fontWeight: 700,
-          }}
-        >
-          Bubble
-        </span>
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 13,
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            color: 'var(--c-text)',
-            fontWeight: 700,
-          }}
-        >
-          Retirement
-        </span>
-        <span
-          style={{
-            fontSize: 12,
-            color: 'var(--c-text-muted)',
-            fontFamily: 'var(--font-mono)',
-          }}
-        >
-          — 1000-simulation Monte Carlo
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'clamp(24px, 3vw, 36px)',
+              letterSpacing: '-0.02em',
+              textTransform: 'uppercase',
+              color: 'var(--c-accent-orange)',
+              fontWeight: 700,
+              lineHeight: 1,
+            }}
+          >
+            BUBBLE
+          </span>
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 9,
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+              color: 'var(--c-text-muted)',
+              marginTop: 4,
+            }}
+          >
+            RETIREMENT — 1000-SIM MONTE CARLO
+          </span>
+        </div>
 
         {/* Auth strip */}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -382,29 +380,42 @@ export default function Home() {
 
           {activeTab === 'forecast' && result && (
             <>
-              <FanChart
-                result={result}
-                retirementAge={inputs.retirementAge}
-                currentAge={inputs.currentAge}
-              />
-              <ResultsSummary result={result} inputs={inputs} />
+              <div className="anim-fade-up anim-fade-up-1">
+                <FanChart
+                  result={result}
+                  retirementAge={inputs.retirementAge}
+                  currentAge={inputs.currentAge}
+                  bgColor={chartBg}
+                />
+              </div>
+              <div className="anim-fade-up anim-fade-up-2">
+                <ResultsSummary result={result} inputs={inputs} />
+              </div>
             </>
           )}
 
           {activeTab === 'table' && result && (
-            <YearlyTable result={result} inputs={inputs} />
+            <div className="anim-fade-in">
+              <YearlyTable result={result} inputs={inputs} />
+            </div>
           )}
 
           {activeTab === 'balance' && result && (
-            <BalanceSheet result={result} inputs={inputs} />
+            <div className="anim-fade-in">
+              <BalanceSheet result={result} inputs={inputs} />
+            </div>
           )}
 
           {activeTab === 'scenarios' && (
-            <ScenarioComparison baseInputs={inputs} />
+            <div className="anim-fade-in">
+              <ScenarioComparison baseInputs={inputs} bgColor={chartBg} />
+            </div>
           )}
 
           {activeTab === 'review' && result && (
-            <AnnualReview result={result} inputs={inputs} />
+            <div className="anim-fade-in">
+              <AnnualReview result={result} inputs={inputs} />
+            </div>
           )}
         </div>
       </div>

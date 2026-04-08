@@ -17,6 +17,7 @@ interface FanChartProps {
   result: SimulationResult
   retirementAge: number
   currentAge: number
+  bgColor?: string
 }
 
 interface TooltipPayload {
@@ -75,8 +76,8 @@ function CustomTooltip({
   )
 }
 
-export function FanChart({ result, retirementAge, currentAge }: FanChartProps) {
-  const BG = '#17130E'
+export function FanChart({ result, retirementAge, currentAge, bgColor = '#17130E' }: FanChartProps) {
+  const BG = bgColor
   const ORANGE = '#FF4800'
   const YELLOW = '#F5DF00'
   const BORDER = '#4A3828'
@@ -111,16 +112,22 @@ export function FanChart({ result, retirementAge, currentAge }: FanChartProps) {
         <ReferenceLine
           x={retirementAge}
           stroke={YELLOW}
-          strokeDasharray="4 4"
-          strokeWidth={1.5}
+          strokeDasharray="3 3"
+          strokeWidth={2}
           label={{
-            value: 'Retire',
+            value: `RETIRE ${retirementAge}`,
             position: 'insideTopRight',
             fill: YELLOW,
-            fontSize: 10,
+            fontSize: 9,
             fontFamily: 'var(--font-mono)',
-            dy: -2,
+            letterSpacing: '0.1em',
+            dy: -4,
           }}
+        />
+        <ReferenceLine
+          y={0}
+          stroke={BORDER}
+          strokeWidth={1}
         />
 
         {/* Fan chart using "erase" technique:
@@ -136,7 +143,7 @@ export function FanChart({ result, retirementAge, currentAge }: FanChartProps) {
           dataKey="p95"
           stroke="none"
           fill={ORANGE}
-          fillOpacity={0.08}
+          fillOpacity={0.13}
           isAnimationActive={false}
         />
         <Area
@@ -154,7 +161,7 @@ export function FanChart({ result, retirementAge, currentAge }: FanChartProps) {
           dataKey="p75"
           stroke="none"
           fill={ORANGE}
-          fillOpacity={0.18}
+          fillOpacity={0.28}
           isAnimationActive={false}
         />
         <Area

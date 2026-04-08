@@ -210,20 +210,40 @@ function ReviewContent({ result, inputs }: AnnualReviewProps) {
         <div
           style={{
             border: '2px dashed var(--c-border)',
-            padding: 32,
+            padding: '40px 32px',
             textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 16,
           }}
         >
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 72,
+              fontWeight: 700,
+              color: 'var(--c-text-dim)',
+              lineHeight: 1,
+              letterSpacing: '-0.04em',
+              userSelect: 'none',
+            }}
+          >
+            {new Date().getFullYear()}
+          </span>
           <p
             style={{
               fontFamily: 'var(--font-mono)',
               fontSize: 11,
               color: 'var(--c-text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
               margin: 0,
+              maxWidth: 320,
+              lineHeight: 1.7,
             }}
           >
-            No snapshots yet. Save this year's projection above to start tracking actuals vs
-            projected.
+            No snapshots yet. Save this year&apos;s projection above to start tracking actuals vs projected.
           </p>
         </div>
       ) : (

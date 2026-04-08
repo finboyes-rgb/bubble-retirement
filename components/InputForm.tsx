@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, Plus, Trash2 } from 'lucide-react'
 import type { SimulationInputs, AssetDefinition, IncomeStream, IncomeType } from '@/lib/types'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,12 +18,18 @@ interface SectionProps {
   title: string
   children: React.ReactNode
   defaultOpen?: boolean
+  accent?: 'orange' | 'yellow' | 'none'
 }
 
-function Section({ title, children, defaultOpen = false }: SectionProps) {
+function Section({ title, children, defaultOpen = false, accent = 'none' }: SectionProps) {
   const [open, setOpen] = useState(defaultOpen)
+  const leftBorder =
+    accent === 'orange' ? '3px solid var(--c-accent-orange)' :
+    accent === 'yellow' ? '3px solid var(--c-accent-yellow)' :
+    undefined
+
   return (
-    <div className="border-2 border-[var(--c-border)]">
+    <div className="border-2 border-[var(--c-border)]" style={leftBorder ? { borderLeft: leftBorder } : undefined}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -32,17 +38,28 @@ function Section({ title, children, defaultOpen = false }: SectionProps) {
         <span className="text-xs font-mono uppercase tracking-widest text-[var(--c-text-muted)]">
           {title}
         </span>
-        {open ? (
-          <ChevronUp size={14} className="text-[var(--c-text-muted)]" />
-        ) : (
-          <ChevronDown size={14} className="text-[var(--c-text-muted)]" />
-        )}
+        <ChevronDown
+          size={14}
+          className="text-[var(--c-text-muted)]"
+          style={{
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)',
+          }}
+        />
       </button>
-      {open && (
-        <div className="px-4 pb-4 pt-2 flex flex-col gap-4 border-t border-[var(--c-border)]">
-          {children}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateRows: open ? '1fr' : '0fr',
+          transition: 'grid-template-rows 220ms cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
+      >
+        <div style={{ overflow: 'hidden' }}>
+          <div className="px-4 pb-4 pt-2 flex flex-col gap-4 border-t border-[var(--c-border)]">
+            {children}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -143,7 +160,7 @@ function AssetCard({
     onChange({ ...asset, [key]: value })
 
   return (
-    <div className="border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3">
+    <div className="border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3" style={{ borderLeft: '3px solid var(--c-accent-orange)' }}>
       {/* Header row */}
       <div className="flex items-center gap-2">
         <input
@@ -224,7 +241,7 @@ function IncomeCard({
   const isLumpSum = stream.type === 'lump_sum'
 
   return (
-    <div className="border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3">
+    <div className="border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3" style={{ borderLeft: '3px solid var(--c-accent-yellow)' }}>
       {/* Header row */}
       <div className="flex items-center gap-2">
         <select
@@ -390,7 +407,7 @@ export function InputForm({ inputs, onChange }: InputFormProps) {
       </Section>
 
       {/* ── Assets ── */}
-      <Section title="Assets" defaultOpen>
+      <Section title="Assets" defaultOpen accent="orange">
         <div className="flex flex-col gap-3">
           {inputs.assets.map((asset) => (
             <AssetCard
@@ -416,7 +433,7 @@ export function InputForm({ inputs, onChange }: InputFormProps) {
       </Section>
 
       {/* ── Income ── */}
-      <Section title="Income">
+      <Section title="Income" accent="yellow">
         <div className="flex flex-col gap-3">
           {inputs.incomeStreams.map((stream) => (
             <IncomeCard

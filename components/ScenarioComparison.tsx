@@ -18,6 +18,7 @@ import { formatCurrency } from '@/lib/utils'
 
 interface ScenarioComparisonProps {
   baseInputs: SimulationInputs
+  bgColor?: string
 }
 
 const SCENARIOS = [
@@ -58,7 +59,7 @@ function applyDelta(
 
 type ViewMode = 'overlay' | 'tabbed'
 
-export function ScenarioComparison({ baseInputs }: ScenarioComparisonProps) {
+export function ScenarioComparison({ baseInputs, bgColor = '#17130E' }: ScenarioComparisonProps) {
   const [mode, setMode] = useState<ViewMode>('overlay')
   const [activeTab, setActiveTab] = useState<'pessimistic' | 'base' | 'optimistic'>('base')
 
@@ -70,7 +71,7 @@ export function ScenarioComparison({ baseInputs }: ScenarioComparisonProps) {
     }))
   }, [baseInputs])
 
-  const BG = '#17130E'
+  const BG = bgColor
   const BORDER = '#4A3828'
   const YELLOW = '#F5DF00'
   const tickFormatter = (age: number) => (age % 5 === 0 ? String(age) : '')

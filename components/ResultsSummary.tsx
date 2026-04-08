@@ -21,17 +21,22 @@ function StatCard({
 }) {
   const valueColor =
     accent === 'orange'
-      ? 'text-[var(--c-accent-orange)]'
+      ? 'var(--c-accent-orange)'
       : accent === 'yellow'
-      ? 'text-[var(--c-accent-yellow)]'
-      : 'text-[var(--c-text-muted)]'
+      ? 'var(--c-accent-yellow)'
+      : 'var(--c-text-muted)'
 
   return (
-    <div className="bg-[var(--c-surface)] border-2 border-[var(--c-border)] p-4 flex flex-col gap-1">
+    <div
+      className="bg-[var(--c-surface)] p-4 flex flex-col gap-1"
+      style={{ transition: 'background 140ms ease', cursor: 'default' }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-bg)' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-surface)' }}
+    >
       <span className="text-xs font-mono uppercase tracking-widest text-[var(--c-text-muted)]">
         {label}
       </span>
-      <span className={`text-2xl font-bold ${valueColor}`}>{value}</span>
+      <span className="text-xl font-bold" style={{ color: valueColor }}>{value}</span>
     </div>
   )
 }
@@ -55,32 +60,51 @@ export function ResultsSummary({ result, inputs }: ResultsSummaryProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 2×2 stat grid */}
-      <div className="grid grid-cols-2 gap-0 border-2 border-[var(--c-border)] shadow-[4px_4px_0_var(--c-border)]">
-        <div className="border-r border-b border-[var(--c-border)]">
-          <StatCard
-            label="Success probability"
-            value={formatPercent(successProbability, 0)}
-            accent={successAccent}
-          />
+      {/* Asymmetric stat layout — hero success probability + 3-col row */}
+      <div className="border-2 border-[var(--c-border)] shadow-[4px_4px_0_var(--c-border)]" style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Hero row — success probability */}
+        <div
+          className="p-5 bg-[var(--c-surface)]"
+          style={{ borderBottom: '2px solid var(--c-border)', transition: 'background 140ms ease', cursor: 'default' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-bg)' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-surface)' }}
+        >
+          <span className="text-xs font-mono uppercase tracking-widest text-[var(--c-text-muted)] block mb-2">
+            Success probability
+          </span>
+          <span
+            className="font-bold"
+            style={{
+              fontSize: 'clamp(40px, 6vw, 56px)',
+              lineHeight: 1,
+              letterSpacing: '-0.03em',
+              fontFamily: 'var(--font-mono)',
+              color:
+                successAccent === 'orange'
+                  ? 'var(--c-accent-orange)'
+                  : successAccent === 'yellow'
+                  ? 'var(--c-accent-yellow)'
+                  : 'var(--c-text-muted)',
+            }}
+          >
+            {formatPercent(successProbability, 0)}
+          </span>
         </div>
-        <div className="border-b border-[var(--c-border)]">
-          <StatCard
-            label="Median at retirement"
-            value={formatCurrency(medianAtRetirement, true)}
-          />
-        </div>
-        <div className="border-r border-[var(--c-border)]">
-          <StatCard
-            label="Median at end"
-            value={formatCurrency(medianAtEnd, true)}
-          />
-        </div>
-        <div>
-          <StatCard
-            label="Range at retirement"
-            value={`${formatCurrency(p10AtRetirement, true)} – ${formatCurrency(p90AtRetirement, true)}`}
-          />
+
+        {/* Supporting 3-col row */}
+        <div className="grid grid-cols-3">
+          <div style={{ borderRight: '1px solid var(--c-border)' }}>
+            <StatCard label="Median at retirement" value={formatCurrency(medianAtRetirement, true)} />
+          </div>
+          <div style={{ borderRight: '1px solid var(--c-border)' }}>
+            <StatCard label="Median at end" value={formatCurrency(medianAtEnd, true)} />
+          </div>
+          <div>
+            <StatCard
+              label="p10–p90 range"
+              value={`${formatCurrency(p10AtRetirement, true)}–${formatCurrency(p90AtRetirement, true)}`}
+            />
+          </div>
         </div>
       </div>
 
