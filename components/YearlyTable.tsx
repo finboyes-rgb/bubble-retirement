@@ -12,6 +12,7 @@ interface YearlyTableProps {
 export function YearlyTable({ result, inputs }: YearlyTableProps) {
   const visibleAssets = inputs.assets.filter((a) => a.visible)
   const retirementAge = inputs.retirementAge
+  const baseYear = new Date().getFullYear()
 
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -34,6 +35,7 @@ export function YearlyTable({ result, inputs }: YearlyTableProps) {
               fontSize: 10,
             }}
           >
+            <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 400 }}>Year</th>
             <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 400 }}>Age</th>
             <th style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 400 }}>
               Portfolio (median)
@@ -67,6 +69,9 @@ export function YearlyTable({ result, inputs }: YearlyTableProps) {
                   color: isRetirementRow ? 'var(--c-text)' : 'var(--c-text-muted)',
                 }}
               >
+                <td style={{ padding: '5px 12px', textAlign: 'left', color: 'var(--c-text-muted)' }}>
+                  {baseYear + (band.age - inputs.currentAge)}
+                </td>
                 <td style={{ padding: '5px 12px', textAlign: 'left' }}>
                   <span
                     style={{

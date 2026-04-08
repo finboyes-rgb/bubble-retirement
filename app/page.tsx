@@ -8,6 +8,7 @@ import { ResultsSummary } from '@/components/ResultsSummary'
 import { ScenarioComparison } from '@/components/ScenarioComparison'
 import { YearlyTable } from '@/components/YearlyTable'
 import { AnnualReview } from '@/components/AnnualReview'
+import { BalanceSheet } from '@/components/BalanceSheet'
 import { runSimulation } from '@/lib/montecarlo'
 import type { SimulationInputs, SimulationResult } from '@/lib/types'
 
@@ -65,7 +66,7 @@ const DEFAULT_INPUTS: SimulationInputs = {
   withdrawalRate: 4,
 }
 
-type ResultsTab = 'forecast' | 'table' | 'scenarios' | 'review'
+type ResultsTab = 'forecast' | 'table' | 'balance' | 'scenarios' | 'review'
 
 export default function Home() {
   const { data: session, status } = useSession()
@@ -73,9 +74,10 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<ResultsTab>('forecast')
   const [stateLoaded, setStateLoaded] = useState(false)
   const [result, setResult] = useState<SimulationResult | null>(null)
+  const [committedInputs, setCommittedInputs] = useState<SimulationInputs>(DEFAULT_INPUTS)
+  const [isDirty, setIsDirty] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const simTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('theme') as 'dark' | 'light' | null
@@ -87,16 +89,10 @@ export default function Home() {
     localStorage.setItem('theme', theme)
   }, [theme])
 
-  // Debounced simulation — client-side only (Math.random() causes hydration mismatch if run on server)
+  // Run simulation on committed inputs only
   useEffect(() => {
-    if (simTimerRef.current) clearTimeout(simTimerRef.current)
-    simTimerRef.current = setTimeout(() => {
-      setResult(runSimulation(inputs))
-    }, 200)
-    return () => {
-      if (simTimerRef.current) clearTimeout(simTimerRef.current)
-    }
-  }, [inputs])
+    setResult(runSimulation(committedInputs))
+  }, [committedInputs])
 
   // Load state from DB on session auth
   useEffect(() => {
@@ -107,7 +103,10 @@ export default function Home() {
         return r.ok ? r.json() : null
       })
       .then((data) => {
-        if (data?.inputs) setInputs(data.inputs as SimulationInputs)
+        if (data?.inputs) {
+          setInputs(data.inputs as SimulationInputs)
+          setCommittedInputs(data.inputs as SimulationInputs)
+        }
         setStateLoaded(true)
       })
       .catch(() => setStateLoaded(true))
@@ -140,11 +139,18 @@ export default function Home() {
       }
     }
     setInputs(next)
+    setIsDirty(true)
+  }
+
+  function handleRunSimulation() {
+    setCommittedInputs(inputs)
+    setIsDirty(false)
   }
 
   const TABS: Array<{ value: ResultsTab; label: string }> = [
     { value: 'forecast', label: 'Forecast' },
     { value: 'table', label: 'Yearly Table' },
+    { value: 'balance', label: 'Balance Sheet' },
     { value: 'scenarios', label: 'Scenarios' },
     { value: 'review', label: 'Review' },
   ]
@@ -209,27 +215,20 @@ export default function Home() {
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             style={{
-              fontSize: 11,
-              fontFamily: 'var(--font-mono)',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
+              fontSize: 14,
               background: 'transparent',
-              border: '1px solid var(--c-border)',
+              border: 'none',
               color: 'var(--c-text-muted)',
-              padding: '3px 8px',
+              padding: '2px 4px',
               cursor: 'pointer',
-              transition: 'color 100ms ease, border-color 100ms ease',
+              opacity: 0.45,
+              transition: 'opacity 150ms ease',
+              lineHeight: 1,
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--c-text)'
-              e.currentTarget.style.borderColor = 'var(--c-border-light)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--c-text-muted)'
-              e.currentTarget.style.borderColor = 'var(--c-border)'
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8' }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.45' }}
           >
-            {theme === 'dark' ? '☀ light' : '☾ dark'}
+            {theme === 'dark' ? '☀' : '☾'}
           </button>
           {status === 'authenticated' && session?.user?.email ? (
             <>
@@ -296,10 +295,45 @@ export default function Home() {
             borderRight: '2px solid var(--c-border)',
             overflowY: 'auto',
             maxHeight: 'calc(100vh - 57px)',
+            display: 'flex',
+            flexDirection: 'column',
           }}
           className="max-[768px]:border-r-0 max-[768px]:border-b-[2px] max-[768px]:max-h-none"
         >
-          <InputForm inputs={inputs} onChange={handleInputChange} />
+          <div style={{ flex: 1 }}>
+            <InputForm inputs={inputs} onChange={handleInputChange} />
+          </div>
+          <div
+            style={{
+              padding: '12px 16px',
+              borderTop: '2px solid var(--c-border)',
+              position: 'sticky',
+              bottom: 0,
+              background: 'var(--c-bg)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleRunSimulation}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                fontWeight: 700,
+                cursor: 'pointer',
+                border: '2px solid var(--c-accent-orange)',
+                background: isDirty ? 'var(--c-accent-orange)' : 'transparent',
+                color: isDirty ? '#17130E' : 'var(--c-accent-orange)',
+                boxShadow: isDirty ? '4px 4px 0 #4A3828' : 'none',
+                transition: 'background 150ms ease, color 150ms ease, box-shadow 150ms ease',
+              }}
+            >
+              {isDirty ? '▶ Run Simulation' : '✓ Up to date'}
+            </button>
+          </div>
         </div>
 
         {/* Right: Results */}
@@ -359,6 +393,10 @@ export default function Home() {
 
           {activeTab === 'table' && result && (
             <YearlyTable result={result} inputs={inputs} />
+          )}
+
+          {activeTab === 'balance' && result && (
+            <BalanceSheet result={result} inputs={inputs} />
           )}
 
           {activeTab === 'scenarios' && (

@@ -78,6 +78,17 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
     Array.from({ length: nAssets }, () => new Array(N_SIMS).fill(0))
   )
 
+  // Per-asset balance-sheet tracking arrays
+  const assetReturnByYear: number[][][] = Array.from({ length: totalYears + 1 }, () =>
+    Array.from({ length: nAssets }, () => new Array(N_SIMS).fill(0))
+  )
+  const assetIncomeByYear: number[][][] = Array.from({ length: totalYears + 1 }, () =>
+    Array.from({ length: nAssets }, () => new Array(N_SIMS).fill(0))
+  )
+  const assetWithdrawByYear: number[][][] = Array.from({ length: totalYears + 1 }, () =>
+    Array.from({ length: nAssets }, () => new Array(N_SIMS).fill(0))
+  )
+
   // Year 0 = starting balances
   for (let s = 0; s < N_SIMS; s++) {
     let total = 0
@@ -95,19 +106,24 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
     for (let y = 1; y <= totalYears; y++) {
       const age = currentAge + y
 
-      // Grow each asset independently
+      // Grow each asset independently, recording return earned
       for (let i = 0; i < nAssets; i++) {
+        const openBal = assetValues[s][i]
         const z = boxMuller(rand)
         const gf = Math.exp(assetParams[i].mu_ln + assetParams[i].sigma * z)
-        assetValues[s][i] = assetValues[s][i] * gf
+        assetValues[s][i] = openBal * gf
+        assetReturnByYear[y][i][s] = openBal * (gf - 1)
       }
 
-      let totalPortfolio = assetValues[s].reduce((sum, v) => sum + v, 0)
+      const rawTotal = assetValues[s].reduce((sum, v) => sum + v, 0)
+      let totalPortfolio = rawTotal
 
       // Add income
-      totalPortfolio += getAnnualIncome(age, inputs)
+      const income = getAnnualIncome(age, inputs)
+      totalPortfolio += income
 
       // Decumulation: subtract withdrawal
+      let withdrawal = 0
       if (age > retirementAge) {
         if (y === accumYears + 1) {
           fixedWithdrawals[s] =
@@ -115,7 +131,16 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
               ? totalPortfolio * (withdrawalRate / 100)
               : annualWithdrawal
         }
-        totalPortfolio -= fixedWithdrawals[s]
+        withdrawal = fixedWithdrawals[s]
+        totalPortfolio -= withdrawal
+      }
+
+      // Record per-asset income/withdrawal allocation proportional to post-growth value
+      if (rawTotal > 0) {
+        for (let i = 0; i < nAssets; i++) {
+          assetIncomeByYear[y][i][s] = income * assetValues[s][i] / rawTotal
+          assetWithdrawByYear[y][i][s] = withdrawal * assetValues[s][i] / rawTotal
+        }
       }
 
       // Ruin floor — zero all assets proportionally
@@ -124,9 +149,8 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
           assetValues[s][i] = 0
         }
         totalPortfolio = 0
-      } else if (totalPortfolio !== assetValues[s].reduce((sum, v) => sum + v, 0)) {
+      } else if (totalPortfolio !== rawTotal) {
         // Redistribute income/withdrawal delta proportionally across assets
-        const rawTotal = assetValues[s].reduce((sum, v) => sum + v, 0)
         if (rawTotal > 0) {
           const scale = totalPortfolio / rawTotal
           for (let i = 0; i < nAssets; i++) {
@@ -150,7 +174,20 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
 
     const assetMedians: AssetYearData[] = assets.map((a, i) => {
       const assetSorted = [...assetsByYear[y][i]].sort((a, b) => a - b)
-      return { assetId: a.id, medianValue: percentile(assetSorted, 50) }
+      const openSorted = y > 0
+        ? [...assetsByYear[y - 1][i]].sort((a, b) => a - b)
+        : assetSorted
+      const returnSorted = [...assetReturnByYear[y][i]].sort((a, b) => a - b)
+      const incomeSorted = [...assetIncomeByYear[y][i]].sort((a, b) => a - b)
+      const withdrawSorted = [...assetWithdrawByYear[y][i]].sort((a, b) => a - b)
+      return {
+        assetId: a.id,
+        medianValue: percentile(assetSorted, 50),
+        medianOpeningBalance: percentile(openSorted, 50),
+        medianReturn: percentile(returnSorted, 50),
+        medianIncome: percentile(incomeSorted, 50),
+        medianWithdrawal: percentile(withdrawSorted, 50),
+      }
     })
 
     const totalIncome = getAnnualIncome(age, inputs)

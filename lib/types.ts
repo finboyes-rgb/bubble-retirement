@@ -32,7 +32,11 @@ export interface SimulationInputs {
 
 export interface AssetYearData {
   assetId: string
-  medianValue: number
+  medianValue: number           // closing balance
+  medianOpeningBalance: number  // value at start of year (before growth)
+  medianReturn: number          // investment return earned
+  medianIncome: number          // proportional income stream allocation
+  medianWithdrawal: number      // proportional withdrawal allocation
 }
 
 export interface YearBand {
