@@ -206,7 +206,7 @@ export default function Home() {
               marginTop: 4,
             }}
           >
-            5000-SIM MONTE CARLO
+            1000-SIM MONTE CARLO
           </span>
         </div>
 

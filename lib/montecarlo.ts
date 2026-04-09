@@ -7,7 +7,8 @@ import type {
 
 export type { SimulationInputs, SimulationResult, YearBand }
 
-const N_SIMS = 5000
+const DEFAULT_N_SIMS = 1000
+const SUGGEST_N_SIMS = 300  // lighter count for binary-search suggestion functions
 
 /** PCG32 seeded PRNG — returns a factory producing uniform [0, 1) samples */
 function pcg32(seed: bigint): () => number {
@@ -48,12 +49,13 @@ function getAnnualIncome(age: number, inputs: SimulationInputs): number {
     .reduce((sum, s) => sum + s.annualAmount, 0)
 }
 
-export function runSimulation(inputs: SimulationInputs): SimulationResult {
+export function runSimulation(inputs: SimulationInputs, nSims: number = DEFAULT_N_SIMS): SimulationResult {
   const rand = pcg32(0xDEADBEEFn)
   const {
     currentAge, retirementAge, lifeExpectancy, assets,
-    annualExpenses, lumpSumExpenses,
+    lumpSumExpenses,
   } = inputs
+  const annualExpenses = inputs.annualExpenses ?? 0
 
   const totalYears = lifeExpectancy - currentAge
   const accumYears = retirementAge - currentAge
@@ -67,33 +69,33 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
   }))
 
   // assetValues[simIndex][assetIndex] = current balance
-  const assetValues: number[][] = Array.from({ length: N_SIMS }, () =>
+  const assetValues: number[][] = Array.from({ length: nSims }, () =>
     assets.map((a) => a.currentBalance)
   )
 
   // portfoliosByYear[year][sim] — year 0 = currentAge
   const portfoliosByYear: number[][] = Array.from({ length: totalYears + 1 }, () =>
-    new Array(N_SIMS).fill(0)
+    new Array(nSims).fill(0)
   )
 
   // assetsByYear[year][assetIndex][sim]
   const assetsByYear: number[][][] = Array.from({ length: totalYears + 1 }, () =>
-    Array.from({ length: nAssets }, () => new Array(N_SIMS).fill(0))
+    Array.from({ length: nAssets }, () => new Array(nSims).fill(0))
   )
 
   // Per-asset balance-sheet tracking arrays
   const assetReturnByYear: number[][][] = Array.from({ length: totalYears + 1 }, () =>
-    Array.from({ length: nAssets }, () => new Array(N_SIMS).fill(0))
+    Array.from({ length: nAssets }, () => new Array(nSims).fill(0))
   )
   const assetIncomeByYear: number[][][] = Array.from({ length: totalYears + 1 }, () =>
-    Array.from({ length: nAssets }, () => new Array(N_SIMS).fill(0))
+    Array.from({ length: nAssets }, () => new Array(nSims).fill(0))
   )
   const assetWithdrawByYear: number[][][] = Array.from({ length: totalYears + 1 }, () =>
-    Array.from({ length: nAssets }, () => new Array(N_SIMS).fill(0))
+    Array.from({ length: nAssets }, () => new Array(nSims).fill(0))
   )
 
   // Year 0 = starting balances
-  for (let s = 0; s < N_SIMS; s++) {
+  for (let s = 0; s < nSims; s++) {
     let total = 0
     for (let i = 0; i < nAssets; i++) {
       assetsByYear[0][i][s] = assets[i].currentBalance
@@ -102,7 +104,7 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
     portfoliosByYear[0][s] = total
   }
 
-  for (let s = 0; s < N_SIMS; s++) {
+  for (let s = 0; s < nSims; s++) {
     for (let y = 1; y <= totalYears; y++) {
       const age = currentAge + y
 
@@ -226,7 +228,7 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
 
   const finalValues = portfoliosByYear[totalYears]
   const successes = finalValues.filter((v) => v > 0).length
-  const successProbability = (successes / N_SIMS) * 100
+  const successProbability = (successes / nSims) * 100
 
   const retirementYearIdx = accumYears
   const retirementSorted = [...portfoliosByYear[retirementYearIdx]].sort((a, b) => a - b)
@@ -265,7 +267,7 @@ export function findIncomeSuggestion(
     const newStreams = inputs.incomeStreams.map((s, idx) =>
       idx === empIdx ? { ...s, annualAmount: s.annualAmount + mid } : s
     )
-    const result = runSimulation({ ...inputs, incomeStreams: newStreams })
+    const result = runSimulation({ ...inputs, incomeStreams: newStreams }, SUGGEST_N_SIMS)
     if (result.successProbability >= targetSuccessPct) {
       hi = mid
     } else {
@@ -287,7 +289,7 @@ export function findRetirementAgeSuggestion(
   for (let delay = 1; delay <= 15; delay++) {
     const newRetirementAge = inputs.retirementAge + delay
     if (newRetirementAge >= inputs.lifeExpectancy) break
-    const result = runSimulation({ ...inputs, retirementAge: newRetirementAge })
+    const result = runSimulation({ ...inputs, retirementAge: newRetirementAge }, SUGGEST_N_SIMS)
     if (result.successProbability >= targetSuccessPct) {
       return delay
     }
