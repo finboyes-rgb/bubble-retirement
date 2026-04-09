@@ -107,8 +107,9 @@ export default function Home() {
       })
       .then((data) => {
         if (data?.inputs) {
-          setInputs(data.inputs as SimulationInputs)
-          setCommittedInputs(data.inputs as SimulationInputs)
+          const merged = { ...DEFAULT_INPUTS, ...data.inputs } as SimulationInputs
+          setInputs(merged)
+          setCommittedInputs(merged)
         }
         setStateLoaded(true)
       })
