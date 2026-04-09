@@ -2,6 +2,12 @@
 
 NZ-market Monte Carlo retirement calculator with fan chart, auth, and annual review workflow.
 
+## Skills
+
+Project skills live in `.claude/skills/`. Invoke them with the Skill tool or `/skill-name`.
+
+- **`frontend-design`** (`UI skill`) — Use when building or restyling any UI component, page, or layout. Enforces the project's brutalist design system and avoids generic AI aesthetics. Invoke whenever the user asks to build, redesign, or visually improve any frontend element.
+
 ## Dev
 
 ```bash

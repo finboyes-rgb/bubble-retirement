@@ -1,7 +1,7 @@
 'use client'
 
 import type { SimulationResult } from '@/lib/montecarlo'
-import type { SimulationInputs } from '@/lib/types'
+import type { SimulationInputs, YearBand } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
 
 interface BalanceSheetProps {
@@ -9,174 +9,402 @@ interface BalanceSheetProps {
   inputs: SimulationInputs
 }
 
-const CELL = { padding: '4px 10px', textAlign: 'right' as const }
-const CELL_L = { padding: '4px 10px', textAlign: 'left' as const }
-
 function fmt(v: number) {
   return formatCurrency(v, true)
+}
+
+function fmtPct(v: number) {
+  return (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%'
+}
+
+const LABEL_W = 196
+const COL_W = 90
+
+type RowDef =
+  | { type: 'section-header'; label: string }
+  | { type: 'asset-header'; assetId: string; label: string }
+  | { type: 'asset-metric'; assetId: string; metric: 'opening' | 'pct-growth' | 'dollar-growth' | 'withdrawal' | 'closing' }
+  | { type: 'spacer' }
+  | { type: 'total-assets' }
+  | { type: 'income-stream'; streamId: string; label: string }
+  | { type: 'total-income' }
+  | { type: 'expense-metric'; metric: 'target-spending' | 'covered-by-income' | 'portfolio-drawdown' | 'lump-sum' }
+
+const orange: React.CSSProperties = { color: 'var(--c-accent-orange)' }
+const yellow: React.CSSProperties = { color: 'var(--c-accent-yellow)', opacity: 0.85 }
+const muted: React.CSSProperties = { color: 'var(--c-text-muted)' }
+const dim: React.CSSProperties = { color: 'var(--c-text-muted)', opacity: 0.4 }
+const bright: React.CSSProperties = { color: 'var(--c-text)' }
+const boldBright: React.CSSProperties = { color: 'var(--c-text)', fontWeight: 600 }
+
+function getCellContent(
+  row: RowDef,
+  band: YearBand,
+  inputs: SimulationInputs
+): { value: string; style: React.CSSProperties } {
+  const isPostRetirement = band.age >= inputs.retirementAge
+
+  switch (row.type) {
+    case 'asset-metric': {
+      const data = band.assetMedians.find((m) => m.assetId === row.assetId)
+      if (!data) return { value: '—', style: dim }
+      switch (row.metric) {
+        case 'opening':
+          return data.medianOpeningBalance < 0.5
+            ? { value: '—', style: dim }
+            : { value: fmt(data.medianOpeningBalance), style: muted }
+        case 'pct-growth': {
+          if (data.medianOpeningBalance < 0.5) return { value: '—', style: dim }
+          const pct = data.medianReturn / data.medianOpeningBalance
+          return { value: fmtPct(pct), style: pct >= 0 ? yellow : orange }
+        }
+        case 'dollar-growth':
+          if (Math.abs(data.medianReturn) < 0.5) return { value: '—', style: dim }
+          return {
+            value: (data.medianReturn >= 0 ? '+' : '') + fmt(data.medianReturn),
+            style: data.medianReturn >= 0 ? yellow : orange,
+          }
+        case 'withdrawal':
+          return data.medianDraw < 0.5
+            ? { value: '—', style: dim }
+            : { value: '−' + fmt(data.medianDraw), style: orange }
+        case 'closing':
+          return data.medianValue < 0.5
+            ? { value: '—', style: dim }
+            : { value: fmt(data.medianValue), style: orange }
+      }
+      break
+    }
+
+    case 'total-assets':
+      return { value: fmt(band.p50), style: boldBright }
+
+    case 'income-stream': {
+      const stream = inputs.incomeStreams.find((s) => s.id === row.streamId)
+      if (!stream) return { value: '—', style: dim }
+      const active = band.age >= stream.startAge && band.age <= stream.endAge
+      return active
+        ? { value: fmt(stream.annualAmount), style: bright }
+        : { value: '—', style: dim }
+    }
+
+    case 'total-income':
+      return band.totalIncome < 0.5
+        ? { value: '—', style: dim }
+        : { value: fmt(band.totalIncome), style: boldBright }
+
+    case 'expense-metric': {
+      switch (row.metric) {
+        case 'target-spending':
+          return { value: fmt(inputs.annualExpenses), style: bright }
+        case 'covered-by-income':
+          return band.totalIncome < 0.5
+            ? { value: '—', style: dim }
+            : { value: '−' + fmt(band.totalIncome), style: yellow }
+        case 'portfolio-drawdown':
+          if (!isPostRetirement) return { value: '—', style: dim }
+          return band.totalPortfolioDraw < 0.5
+            ? { value: '—', style: dim }
+            : { value: fmt(band.totalPortfolioDraw), style: orange }
+        case 'lump-sum':
+          return band.totalLumpSum < 0.5
+            ? { value: '—', style: dim }
+            : { value: fmt(band.totalLumpSum), style: orange }
+      }
+      break
+    }
+
+    default:
+      return { value: '', style: {} }
+  }
+  return { value: '', style: {} }
+}
+
+const METRIC_LABELS: Record<string, string> = {
+  opening: 'Opening balance',
+  'pct-growth': '% growth',
+  'dollar-growth': '$ growth',
+  withdrawal: 'Withdrawal',
+  closing: 'Closing balance',
+  'target-spending': 'Annual expenses',
+  'covered-by-income': 'Covered by income',
+  'portfolio-drawdown': 'Portfolio drawdown',
+  'lump-sum': 'Lump sums',
 }
 
 export function BalanceSheet({ result, inputs }: BalanceSheetProps) {
   const visibleAssets = inputs.assets.filter((a) => a.visible)
   const baseYear = new Date().getFullYear()
+  const bands = result.bands
+  const hasLumpSums = bands.some((b) => b.totalLumpSum > 0.5)
 
-  // Build flat rows: one per (band × visibleAsset)
-  type Row = {
-    year: number
-    age: number
-    assetName: string
-    isFirstAsset: boolean
-    isRetirementYear: boolean
-    opening: number
-    returnEarned: number
-    income: number
-    withdrawal: number
-    closing: number
+  // Build row definitions
+  const rows: RowDef[] = []
+
+  rows.push({ type: 'section-header', label: 'ASSETS' })
+  for (const asset of visibleAssets) {
+    rows.push({ type: 'asset-header', assetId: asset.id, label: asset.name })
+    rows.push({ type: 'asset-metric', assetId: asset.id, metric: 'opening' })
+    rows.push({ type: 'asset-metric', assetId: asset.id, metric: 'pct-growth' })
+    rows.push({ type: 'asset-metric', assetId: asset.id, metric: 'dollar-growth' })
+    rows.push({ type: 'asset-metric', assetId: asset.id, metric: 'withdrawal' })
+    rows.push({ type: 'asset-metric', assetId: asset.id, metric: 'closing' })
+    rows.push({ type: 'spacer' })
+  }
+  rows.push({ type: 'total-assets' })
+  rows.push({ type: 'spacer' })
+
+  rows.push({ type: 'section-header', label: 'INCOME' })
+  for (const stream of inputs.incomeStreams) {
+    rows.push({ type: 'income-stream', streamId: stream.id, label: stream.label })
+  }
+  rows.push({ type: 'total-income' })
+  rows.push({ type: 'spacer' })
+
+  rows.push({ type: 'section-header', label: 'EXPENSES' })
+  rows.push({ type: 'expense-metric', metric: 'target-spending' })
+  rows.push({ type: 'expense-metric', metric: 'covered-by-income' })
+  rows.push({ type: 'expense-metric', metric: 'portfolio-drawdown' })
+  if (hasLumpSums) {
+    rows.push({ type: 'expense-metric', metric: 'lump-sum' })
   }
 
-  const rows: Row[] = []
-  for (const band of result.bands) {
-    const calYear = baseYear + (band.age - inputs.currentAge)
-    const isRetirementYear = band.age === inputs.retirementAge
-
-    visibleAssets.forEach((asset, assetIdx) => {
-      const data = band.assetMedians.find((m) => m.assetId === asset.id)
-      if (!data) return
-      rows.push({
-        year: calYear,
-        age: band.age,
-        assetName: asset.name,
-        isFirstAsset: assetIdx === 0,
-        isRetirementYear,
-        opening: data.medianOpeningBalance,
-        returnEarned: data.medianReturn,
-        income: data.medianIncome,
-        withdrawal: data.medianWithdrawal,
-        closing: data.medianValue,
-      })
-    })
+  const baseLabelCell: React.CSSProperties = {
+    position: 'sticky',
+    left: 0,
+    zIndex: 1,
+    minWidth: LABEL_W,
+    maxWidth: LABEL_W,
+    padding: '3px 10px',
+    textAlign: 'left',
+    whiteSpace: 'nowrap',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 11,
   }
 
-  const colMuted: React.CSSProperties = { color: 'var(--c-text-muted)' }
-  const colOrange: React.CSSProperties = { color: 'var(--c-accent-orange)' }
-  const colGreen: React.CSSProperties = { color: 'var(--c-accent-yellow)', opacity: 0.85 }
+  const baseDataCell: React.CSSProperties = {
+    minWidth: COL_W,
+    padding: '3px 8px',
+    textAlign: 'right',
+    whiteSpace: 'nowrap',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 11,
+  }
 
   return (
     <div style={{ overflowX: 'auto' }}>
-      <table
-        style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          fontFamily: 'var(--font-mono)',
-          fontSize: 11,
-          whiteSpace: 'nowrap',
-        }}
-      >
+      <table style={{ borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
         <thead>
-          <tr
-            style={{
-              borderBottom: '2px solid var(--c-border)',
-              color: 'var(--c-text-muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              fontSize: 10,
-            }}
-          >
-            <th style={{ ...CELL_L, fontWeight: 400 }}>Year</th>
-            <th style={{ ...CELL_L, fontWeight: 400 }}>Age</th>
-            <th style={{ ...CELL_L, fontWeight: 400 }}>Asset</th>
-            <th style={{ ...CELL, fontWeight: 400 }}>Opening</th>
-            <th style={{ ...CELL, fontWeight: 400 }}>+ Return</th>
-            <th style={{ ...CELL, fontWeight: 400 }}>+ Income</th>
-            <th style={{ ...CELL, fontWeight: 400 }}>− Withdrawal</th>
-            <th style={{ ...CELL, fontWeight: 400 }}>= Closing</th>
+          {/* Calendar year row */}
+          <tr style={{ borderBottom: '1px solid var(--c-border)' }}>
+            <th
+              style={{
+                ...baseLabelCell,
+                background: 'var(--c-bg)',
+                fontWeight: 400,
+                color: 'var(--c-text-muted)',
+                fontSize: 9,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                paddingBottom: 2,
+              }}
+            />
+            {bands.map((band) => {
+              const calYear = baseYear + (band.age - inputs.currentAge)
+              const isRetire = band.age === inputs.retirementAge
+              return (
+                <th
+                  key={band.age}
+                  style={{
+                    ...baseDataCell,
+                    fontWeight: 400,
+                    color: isRetire ? 'var(--c-accent-yellow)' : 'var(--c-text-muted)',
+                    fontSize: 10,
+                    letterSpacing: '0.04em',
+                    borderLeft: isRetire ? '2px solid var(--c-accent-yellow)' : '1px solid transparent',
+                    paddingBottom: 2,
+                  }}
+                >
+                  {calYear}
+                </th>
+              )
+            })}
+          </tr>
+
+          {/* Age row */}
+          <tr style={{ borderBottom: '2px solid var(--c-border)' }}>
+            <th
+              style={{
+                ...baseLabelCell,
+                background: 'var(--c-bg)',
+                fontWeight: 400,
+                color: 'var(--c-text-muted)',
+                fontSize: 9,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                paddingTop: 2,
+              }}
+            >
+              Age →
+            </th>
+            {bands.map((band) => {
+              const isRetire = band.age === inputs.retirementAge
+              return (
+                <th
+                  key={band.age}
+                  style={{
+                    ...baseDataCell,
+                    fontWeight: isRetire ? 700 : 400,
+                    color: isRetire ? 'var(--c-accent-yellow)' : 'var(--c-text-muted)',
+                    fontSize: 10,
+                    borderLeft: isRetire ? '2px solid var(--c-accent-yellow)' : '1px solid transparent',
+                    paddingTop: 2,
+                  }}
+                >
+                  {band.age}{isRetire ? ' ★' : ''}
+                </th>
+              )
+            })}
           </tr>
         </thead>
+
         <tbody>
-          {rows.map((row, idx) => {
-            const isEvenYear = Math.floor(idx / visibleAssets.length) % 2 === 0
-            const isLastAssetInGroup = !rows[idx + 1] || rows[idx + 1].isFirstAsset
+          {rows.map((row, rowIdx) => {
+            // Spacer
+            if (row.type === 'spacer') {
+              return (
+                <tr key={`spacer-${rowIdx}`}>
+                  <td style={{ ...baseLabelCell, background: 'var(--c-bg)', height: 10, padding: 0 }} />
+                  {bands.map((band) => (
+                    <td key={band.age} style={{ height: 10, padding: 0 }} />
+                  ))}
+                </tr>
+              )
+            }
+
+            // Section header
+            if (row.type === 'section-header') {
+              return (
+                <tr
+                  key={`sh-${row.label}`}
+                  style={{ borderTop: rowIdx > 0 ? '1px solid var(--c-border)' : undefined }}
+                >
+                  <td
+                    style={{
+                      ...baseLabelCell,
+                      background: 'var(--c-surface)',
+                      color: 'var(--c-text-muted)',
+                      fontSize: 9,
+                      fontWeight: 600,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      paddingTop: 7,
+                      paddingBottom: 7,
+                    }}
+                  >
+                    {row.label}
+                  </td>
+                  {bands.map((band) => {
+                    const isRetire = band.age === inputs.retirementAge
+                    return (
+                      <td
+                        key={band.age}
+                        style={{
+                          background: 'var(--c-surface)',
+                          borderLeft: isRetire ? '2px solid var(--c-accent-yellow)' : '1px solid transparent',
+                        }}
+                      />
+                    )
+                  })}
+                </tr>
+              )
+            }
+
+            // Data rows
+            const isAssetHeader = row.type === 'asset-header'
+            const isSubMetric = row.type === 'asset-metric' || row.type === 'income-stream' || row.type === 'expense-metric'
+            const isTotalRow = row.type === 'total-assets' || row.type === 'total-income'
+            const isPortfolioDrawdown = row.type === 'expense-metric' && row.metric === 'portfolio-drawdown'
+
+            let labelText = ''
+            let labelIndent = 0
+            let labelColor: string = 'var(--c-text)'
+            let labelFontWeight = 400
+            let labelFontSize = 11
+
+            if (row.type === 'asset-header') {
+              labelText = row.label
+              labelFontWeight = 600
+            } else if (row.type === 'asset-metric') {
+              labelText = METRIC_LABELS[row.metric]
+              labelIndent = 12
+              labelColor = 'var(--c-text-muted)'
+            } else if (row.type === 'total-assets') {
+              labelText = 'TOTAL ASSETS'
+              labelFontWeight = 700
+              labelFontSize = 9
+              labelColor = 'var(--c-text)'
+            } else if (row.type === 'income-stream') {
+              labelText = row.label
+              labelIndent = 12
+              labelColor = 'var(--c-text-muted)'
+            } else if (row.type === 'total-income') {
+              labelText = 'Total income'
+              labelFontWeight = 600
+            } else if (row.type === 'expense-metric') {
+              labelText = METRIC_LABELS[row.metric]
+              if (row.metric !== 'target-spending') {
+                labelIndent = 12
+                labelColor = 'var(--c-text-muted)'
+              }
+              if (isPortfolioDrawdown) {
+                labelFontWeight = 600
+                labelColor = 'var(--c-text)'
+              }
+            }
 
             return (
               <tr
-                key={`${row.year}-${row.assetName}`}
+                key={`row-${rowIdx}`}
                 style={{
-                  background: isEvenYear ? 'var(--c-bg)' : 'var(--c-surface)',
-                  borderLeft: row.isRetirementYear && row.isFirstAsset
-                    ? '3px solid var(--c-accent-yellow)'
-                    : row.isRetirementYear
-                    ? '3px solid var(--c-accent-yellow)'
-                    : '3px solid transparent',
-                  borderBottom: isLastAssetInGroup
-                    ? '1px solid var(--c-border)'
-                    : 'none',
+                  borderTop: isTotalRow || isPortfolioDrawdown ? '1px solid var(--c-border)' : undefined,
                 }}
               >
-                {/* Year — only shown on first asset row of group */}
-                <td style={{ ...CELL_L, ...colMuted }}>
-                  {row.isFirstAsset ? row.year : ''}
+                <td
+                  style={{
+                    ...baseLabelCell,
+                    background: 'var(--c-bg)',
+                    paddingLeft: labelIndent + 10,
+                    color: labelColor,
+                    fontWeight: labelFontWeight,
+                    fontSize: labelFontSize,
+                    letterSpacing: (row.type === 'total-assets') ? '0.1em' : undefined,
+                    textTransform: (row.type === 'total-assets') ? 'uppercase' : undefined,
+                    paddingTop: isAssetHeader ? 6 : 3,
+                    paddingBottom: isSubMetric && !isAssetHeader ? 3 : isAssetHeader ? 2 : 3,
+                    opacity: (row.type === 'asset-metric' && row.metric !== 'closing') ? 0.75 : 1,
+                  }}
+                >
+                  {labelText}
                 </td>
-
-                {/* Age — only shown on first asset row */}
-                <td style={{ ...CELL_L }}>
-                  {row.isFirstAsset ? (
-                    <span
+                {bands.map((band) => {
+                  const isRetire = band.age === inputs.retirementAge
+                  const { value, style } = getCellContent(row, band, inputs)
+                  return (
+                    <td
+                      key={band.age}
                       style={{
-                        color: row.isRetirementYear
-                          ? 'var(--c-accent-yellow)'
-                          : 'var(--c-text-muted)',
-                        fontWeight: row.isRetirementYear ? 700 : 400,
+                        ...baseDataCell,
+                        ...style,
+                        borderLeft: isRetire ? '2px solid var(--c-accent-yellow)' : '1px solid transparent',
+                        paddingTop: isAssetHeader ? 6 : 3,
+                        paddingBottom: isAssetHeader ? 2 : 3,
                       }}
                     >
-                      {row.age}
-                      {row.isRetirementYear && (
-                        <span
-                          style={{
-                            marginLeft: 6,
-                            fontSize: 9,
-                            letterSpacing: '0.1em',
-                            textTransform: 'uppercase',
-                            color: 'var(--c-accent-yellow)',
-                          }}
-                        >
-                          retire
-                        </span>
-                      )}
-                    </span>
-                  ) : ''}
-                </td>
-
-                {/* Asset name */}
-                <td style={{ ...CELL_L, ...colMuted, opacity: 0.7 }}>
-                  {row.assetName}
-                </td>
-
-                {/* Opening */}
-                <td style={{ ...CELL, ...colMuted }}>
-                  {row.opening > 0 ? fmt(row.opening) : '—'}
-                </td>
-
-                {/* Return */}
-                <td style={{ ...CELL, ...colGreen }}>
-                  {row.returnEarned !== 0
-                    ? (row.returnEarned >= 0 ? '+' : '') + fmt(row.returnEarned)
-                    : '—'}
-                </td>
-
-                {/* Income */}
-                <td style={{ ...CELL, ...colMuted }}>
-                  {row.income > 0.5 ? fmt(row.income) : '—'}
-                </td>
-
-                {/* Withdrawal */}
-                <td style={{ ...CELL, color: row.withdrawal > 0.5 ? 'var(--c-accent-orange)' : 'var(--c-text-muted)' }}>
-                  {row.withdrawal > 0.5 ? fmt(row.withdrawal) : '—'}
-                </td>
-
-                {/* Closing */}
-                <td style={{ ...CELL, ...colOrange }}>
-                  {fmt(row.closing)}
-                </td>
+                      {value}
+                    </td>
+                  )
+                })}
               </tr>
             )
           })}

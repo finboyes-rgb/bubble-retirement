@@ -17,7 +17,7 @@ const spaceMono = Space_Mono({
 
 export const metadata: Metadata = {
   title: 'Bubble Retirement',
-  description: 'Monte Carlo retirement calculator — see 1000 possible futures for your portfolio.',
+  description: 'Monte Carlo retirement calculator — see 5000 possible futures for your portfolio.',
 }
 
 export default function RootLayout({

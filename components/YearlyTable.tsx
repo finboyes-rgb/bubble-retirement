@@ -46,10 +46,16 @@ export function YearlyTable({ result, inputs }: YearlyTableProps) {
               </th>
             ))}
             <th style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 400 }}>
-              Total Income
+              Total Assets
             </th>
             <th style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 400 }}>
-              Withdrawal
+              Income
+            </th>
+            <th style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 400 }}>
+              Portfolio Draw
+            </th>
+            <th style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 400 }}>
+              Lump Sum
             </th>
           </tr>
         </thead>
@@ -108,11 +114,17 @@ export function YearlyTable({ result, inputs }: YearlyTableProps) {
                     </td>
                   )
                 })}
-                <td style={{ padding: '5px 12px', textAlign: 'right' }}>
+                <td style={{ padding: '5px 12px', textAlign: 'right', color: 'var(--c-accent-yellow)', fontWeight: 600 }}>
+                  {formatCurrency(band.assetMedians.reduce((sum, m) => sum + m.medianValue, 0), true)}
+                </td>
+                <td style={{ padding: '5px 12px', textAlign: 'right', color: 'var(--c-accent-yellow)', opacity: 0.85 }}>
                   {band.totalIncome > 0 ? formatCurrency(band.totalIncome, true) : '—'}
                 </td>
-                <td style={{ padding: '5px 12px', textAlign: 'right' }}>
-                  {band.totalWithdrawal > 0 ? formatCurrency(band.totalWithdrawal, true) : '—'}
+                <td style={{ padding: '5px 12px', textAlign: 'right', color: band.totalPortfolioDraw > 0 ? 'var(--c-accent-orange)' : 'var(--c-text-muted)' }}>
+                  {band.totalPortfolioDraw > 0 ? formatCurrency(band.totalPortfolioDraw, true) : '—'}
+                </td>
+                <td style={{ padding: '5px 12px', textAlign: 'right', color: band.totalLumpSum > 0 ? 'var(--c-accent-orange)' : 'var(--c-text-muted)' }}>
+                  {band.totalLumpSum > 0 ? formatCurrency(band.totalLumpSum, true) : '—'}
                 </td>
               </tr>
             )

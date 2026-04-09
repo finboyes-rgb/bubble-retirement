@@ -9,6 +9,7 @@ import { ScenarioComparison } from '@/components/ScenarioComparison'
 import { YearlyTable } from '@/components/YearlyTable'
 import { AnnualReview } from '@/components/AnnualReview'
 import { BalanceSheet } from '@/components/BalanceSheet'
+import { ModelExplainer } from '@/components/ModelExplainer'
 import { runSimulation } from '@/lib/montecarlo'
 import type { SimulationInputs, SimulationResult } from '@/lib/types'
 
@@ -22,7 +23,8 @@ const DEFAULT_INPUTS: SimulationInputs = {
       name: 'KiwiSaver',
       currentBalance: 50000,
       expectedReturn: 5.0,
-      volatility: 9.0,
+      volatility: 10,
+      riskProfile: 'moderate',
       visible: true,
     },
     {
@@ -30,7 +32,8 @@ const DEFAULT_INPUTS: SimulationInputs = {
       name: 'NZ Equities',
       currentBalance: 20000,
       expectedReturn: 7.0,
-      volatility: 16.0,
+      volatility: 17,
+      riskProfile: 'growth',
       visible: true,
     },
     {
@@ -38,7 +41,8 @@ const DEFAULT_INPUTS: SimulationInputs = {
       name: 'Term Deposit',
       currentBalance: 10000,
       expectedReturn: 1.5,
-      volatility: 1.0,
+      volatility: 0,
+      riskProfile: 'fixed',
       visible: true,
     },
   ],
@@ -60,13 +64,12 @@ const DEFAULT_INPUTS: SimulationInputs = {
       endAge: 90,
     },
   ],
+  lumpSumExpenses: [],
   inflationRate: 2.5,
-  withdrawalMode: 'rate',
-  annualWithdrawal: 60000,
-  withdrawalRate: 4,
+  annualExpenses: 60000,
 }
 
-type ResultsTab = 'forecast' | 'table' | 'balance' | 'scenarios' | 'review'
+type ResultsTab = 'forecast' | 'table' | 'balance' | 'scenarios' | 'review' | 'explainer'
 
 export default function Home() {
   const { data: session, status } = useSession()
@@ -153,6 +156,7 @@ export default function Home() {
     { value: 'balance', label: 'Balance Sheet' },
     { value: 'scenarios', label: 'Scenarios' },
     { value: 'review', label: 'Review' },
+    { value: 'explainer', label: 'How It Works' },
   ]
 
   const chartBg = theme === 'dark' ? '#17130E' : '#E2D5C0'
@@ -190,7 +194,7 @@ export default function Home() {
               lineHeight: 1,
             }}
           >
-            BUBBLE
+            BUBBLE RETIREMENT
           </span>
           <span
             style={{
@@ -202,7 +206,7 @@ export default function Home() {
               marginTop: 4,
             }}
           >
-            RETIREMENT — 1000-SIM MONTE CARLO
+            5000-SIM MONTE CARLO
           </span>
         </div>
 
@@ -415,6 +419,12 @@ export default function Home() {
           {activeTab === 'review' && result && (
             <div className="anim-fade-in">
               <AnnualReview result={result} inputs={inputs} />
+            </div>
+          )}
+
+          {activeTab === 'explainer' && (
+            <div className="anim-fade-in">
+              <ModelExplainer />
             </div>
           )}
         </div>

@@ -1,9 +1,23 @@
+export type RiskProfile = 'fixed' | 'conservative' | 'moderate' | 'growth'
+
+export const RISK_PROFILES: Record<RiskProfile, {
+  label: string
+  description: string
+  volatility: number
+}> = {
+  fixed:        { label: 'Fixed',        description: 'Term deposit / guaranteed return', volatility: 0 },
+  conservative: { label: 'Conservative', description: 'Cash & bonds',                    volatility: 4 },
+  moderate:     { label: 'Moderate',     description: 'Balanced fund / KiwiSaver',       volatility: 10 },
+  growth:       { label: 'Growth',       description: 'NZ / global equities',            volatility: 17 },
+}
+
 export interface AssetDefinition {
   id: string
   name: string
   currentBalance: number    // NZ$ real
   expectedReturn: number    // real % e.g. 5.0
   volatility: number        // std dev % e.g. 12.0
+  riskProfile?: RiskProfile // if set, volatility was chosen via preset
   visible: boolean          // UI toggle — does not affect simulation
 }
 
@@ -18,16 +32,22 @@ export interface IncomeStream {
   endAge: number          // for lump_sum: same as startAge (one year only)
 }
 
+export interface LumpSumExpense {
+  id: string
+  label: string
+  amount: number    // NZ$ real
+  atAge: number     // age at which the expense is deducted
+}
+
 export interface SimulationInputs {
   currentAge: number
   retirementAge: number
   lifeExpectancy: number
   assets: AssetDefinition[]
   incomeStreams: IncomeStream[]
+  lumpSumExpenses: LumpSumExpense[]
   inflationRate: number         // % — only global return param
-  withdrawalMode: 'amount' | 'rate'
-  annualWithdrawal: number      // NZ$/year real (if withdrawalMode === 'amount')
-  withdrawalRate: number        // % of portfolio at retirement (if withdrawalMode === 'rate')
+  annualExpenses: number        // NZ$/year real (constant in real terms); post-retirement draw = max(0, expenses - income)
 }
 
 export interface AssetYearData {
@@ -36,7 +56,7 @@ export interface AssetYearData {
   medianOpeningBalance: number  // value at start of year (before growth)
   medianReturn: number          // investment return earned
   medianIncome: number          // proportional income stream allocation
-  medianWithdrawal: number      // proportional withdrawal allocation
+  medianDraw: number            // proportional portfolio draw allocation (net expenses + lump sums)
 }
 
 export interface YearBand {
@@ -50,7 +70,8 @@ export interface YearBand {
   p95: number
   assetMedians: AssetYearData[]
   totalIncome: number
-  totalWithdrawal: number
+  totalPortfolioDraw: number     // actual draw from portfolio (annualExpenses − income, floored at 0)
+  totalLumpSum: number           // one-off expenses deducted this year
 }
 
 export interface SimulationResult {

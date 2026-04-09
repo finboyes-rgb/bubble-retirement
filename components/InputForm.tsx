@@ -2,7 +2,8 @@
 
 import { useState, useRef } from 'react'
 import { ChevronDown, Plus, Trash2 } from 'lucide-react'
-import type { SimulationInputs, AssetDefinition, IncomeStream, IncomeType } from '@/lib/types'
+import type { SimulationInputs, AssetDefinition, IncomeStream, IncomeType, LumpSumExpense, RiskProfile } from '@/lib/types'
+import { RISK_PROFILES } from '@/lib/types'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
@@ -156,6 +157,7 @@ function AssetCard({
   onChange: (a: AssetDefinition) => void
   onDelete: () => void
 }) {
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const set = <K extends keyof AssetDefinition>(key: K, value: AssetDefinition[K]) =>
     onChange({ ...asset, [key]: value })
 
@@ -199,6 +201,32 @@ function AssetCard({
         />
       </Field>
 
+      {/* Risk profile buttons (hidden in advanced mode) */}
+      {!showAdvanced && (
+        <div className="flex flex-col gap-1.5">
+          <Label>Risk profile</Label>
+          <div className="flex gap-0">
+            {(Object.entries(RISK_PROFILES) as [RiskProfile, typeof RISK_PROFILES[RiskProfile]][]).map(([key, profile], i) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onChange({ ...asset, riskProfile: key, volatility: profile.volatility })}
+                className={cn(
+                  'flex-1 py-1.5 text-[10px] font-mono uppercase tracking-wide border-2 transition-colors cursor-pointer',
+                  i > 0 && 'border-l-0',
+                  asset.riskProfile === key
+                    ? 'border-[var(--c-accent-orange)] text-[var(--c-accent-orange)] bg-[var(--c-surface)]'
+                    : 'border-[var(--c-border)] text-[var(--c-text-muted)] hover:border-[var(--c-border-light)]'
+                )}
+              >
+                {profile.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Expected return — always visible */}
       <SliderField
         label="Expected return (real)"
         value={asset.expectedReturn}
@@ -209,15 +237,26 @@ function AssetCard({
         format={(v) => `${v.toFixed(1)}%`}
       />
 
-      <SliderField
-        label="Volatility (std dev)"
-        value={asset.volatility}
-        onChange={(v) => set('volatility', v)}
-        min={0}
-        max={40}
-        step={0.5}
-        format={(v) => `${v.toFixed(1)}%`}
-      />
+      {/* Advanced: raw volatility slider */}
+      {showAdvanced && (
+        <SliderField
+          label="Volatility (std dev)"
+          value={asset.volatility}
+          onChange={(v) => onChange({ ...asset, volatility: v, riskProfile: undefined })}
+          min={0}
+          max={40}
+          step={0.5}
+          format={(v) => `${v.toFixed(1)}%`}
+        />
+      )}
+
+      <button
+        type="button"
+        onClick={() => setShowAdvanced((s) => !s)}
+        className="text-[10px] font-mono text-[var(--c-text-muted)] hover:text-[var(--c-text)] transition-colors cursor-pointer text-left"
+      >
+        {showAdvanced ? '← Presets' : 'Advanced ▸'}
+      </button>
     </div>
   )
 }
@@ -314,6 +353,71 @@ function IncomeCard({
   )
 }
 
+// ─── Lump Sum Expense Card ────────────────────────────────────────────────────
+
+function ExpenseCard({
+  expense,
+  currentAge,
+  currentYear,
+  onChange,
+  onDelete,
+}: {
+  expense: LumpSumExpense
+  currentAge: number
+  currentYear: number
+  onChange: (e: LumpSumExpense) => void
+  onDelete: () => void
+}) {
+  const set = <K extends keyof LumpSumExpense>(key: K, value: LumpSumExpense[K]) =>
+    onChange({ ...expense, [key]: value })
+
+  const calYear = currentYear + (expense.atAge - currentAge)
+
+  return (
+    <div className="border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3" style={{ borderLeft: '3px solid var(--c-accent-orange)' }}>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={expense.label}
+          onChange={(e) => set('label', e.target.value)}
+          className="flex-1 bg-transparent text-sm font-mono text-[var(--c-text)] outline-none border-b border-transparent focus:border-[var(--c-border-light)] pb-0.5 transition-colors"
+          placeholder="e.g. New car"
+        />
+        <button
+          type="button"
+          onClick={onDelete}
+          className="text-[var(--c-text-muted)] hover:text-[var(--c-accent-orange)] transition-colors cursor-pointer"
+          title="Remove expense"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+
+      <Field label="Amount">
+        <Input
+          type="number"
+          prefix="NZ$"
+          value={expense.amount}
+          onChange={(e) => set('amount', parseFloat(e.target.value) || 0)}
+          min={0}
+        />
+      </Field>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Field label={`At age (${calYear})`}>
+          <Input
+            type="number"
+            value={expense.atAge}
+            onChange={(e) => set('atAge', parseInt(e.target.value) || currentAge)}
+            min={currentAge}
+            max={110}
+          />
+        </Field>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Form ───────────────────────────────────────────────────────────────
 
 export function InputForm({ inputs, onChange }: InputFormProps) {
@@ -337,7 +441,8 @@ export function InputForm({ inputs, onChange }: InputFormProps) {
       name: 'New Asset',
       currentBalance: 0,
       expectedReturn: 5.0,
-      volatility: 12.0,
+      volatility: RISK_PROFILES.moderate.volatility,
+      riskProfile: 'moderate',
       visible: true,
     }
     onChange({ ...inputs, assets: [...inputs.assets, newAsset] })
@@ -366,6 +471,27 @@ export function InputForm({ inputs, onChange }: InputFormProps) {
 
   function deleteStream(id: string) {
     onChange({ ...inputs, incomeStreams: inputs.incomeStreams.filter((s) => s.id !== id) })
+  }
+
+  // ── Lump sum expense helpers ──
+  const currentYear = new Date().getFullYear()
+
+  function updateExpense(id: string, updated: LumpSumExpense) {
+    onChange({ ...inputs, lumpSumExpenses: (inputs.lumpSumExpenses ?? []).map((e) => (e.id === id ? updated : e)) })
+  }
+
+  function addExpense() {
+    const newExpense: LumpSumExpense = {
+      id: crypto.randomUUID(),
+      label: 'New Expense',
+      amount: 0,
+      atAge: inputs.currentAge + 2,
+    }
+    onChange({ ...inputs, lumpSumExpenses: [...(inputs.lumpSumExpenses ?? []), newExpense] })
+  }
+
+  function deleteExpense(id: string) {
+    onChange({ ...inputs, lumpSumExpenses: (inputs.lumpSumExpenses ?? []).filter((e) => e.id !== id) })
   }
 
   return (
@@ -434,6 +560,9 @@ export function InputForm({ inputs, onChange }: InputFormProps) {
 
       {/* ── Income ── */}
       <Section title="Income" accent="yellow">
+        <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
+          In retirement, income offsets your withdrawal — only the remainder is drawn from your portfolio.
+        </p>
         <div className="flex flex-col gap-3">
           {inputs.incomeStreams.map((stream) => (
             <IncomeCard
@@ -455,6 +584,51 @@ export function InputForm({ inputs, onChange }: InputFormProps) {
         </button>
       </Section>
 
+      {/* ── Annual Expenses ── */}
+      <Section title="Annual Expenses">
+        <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
+          Your expected yearly spending in today&apos;s dollars. In retirement, your portfolio covers any gap between expenses and income.
+        </p>
+        <Field label="Annual expenses (today's dollars)">
+          <Input
+            type="number"
+            prefix="NZ$"
+            value={inputs.annualExpenses}
+            onChange={(e) => onChange({ ...inputs, annualExpenses: parseFloat(e.target.value) || 0 })}
+            min={0}
+          />
+        </Field>
+      </Section>
+
+      {/* ── Lump Sum Expenses ── */}
+      <Section title="Lump Sum Expenses">
+        <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
+          One-off future expenses deducted from your portfolio in the year they occur (e.g. new car, home renovations).
+        </p>
+        {(inputs.lumpSumExpenses ?? []).length > 0 && (
+          <div className="flex flex-col gap-3">
+            {(inputs.lumpSumExpenses ?? []).map((expense) => (
+              <ExpenseCard
+                key={expense.id}
+                expense={expense}
+                currentAge={inputs.currentAge}
+                currentYear={currentYear}
+                onChange={(updated) => updateExpense(expense.id, updated)}
+                onDelete={() => deleteExpense(expense.id)}
+              />
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={addExpense}
+          className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-[var(--c-border)] text-xs font-mono uppercase tracking-widest text-[var(--c-text-muted)] hover:border-[var(--c-border-light)] hover:text-[var(--c-text)] transition-colors cursor-pointer w-full justify-center"
+        >
+          <Plus size={12} />
+          Add Expense
+        </button>
+      </Section>
+
       {/* ── Returns ── */}
       <Section title="Returns (real, inflation-adjusted)">
         <SliderField
@@ -467,60 +641,8 @@ export function InputForm({ inputs, onChange }: InputFormProps) {
           format={(v) => `${v.toFixed(1)}%`}
         />
         <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
-          Expected return and volatility are set per asset above.
+          Expected return and risk profile are set per asset above.
         </p>
-      </Section>
-
-      {/* ── Withdrawals ── */}
-      <Section title="Withdrawals">
-        <div className="flex gap-0">
-          <button
-            type="button"
-            onClick={() => onChange({ ...inputs, withdrawalMode: 'rate' })}
-            className={cn(
-              'flex-1 py-2 text-xs font-mono uppercase tracking-widest border-2 transition-colors cursor-pointer',
-              inputs.withdrawalMode === 'rate'
-                ? 'border-[var(--c-accent-orange)] text-[var(--c-accent-orange)] bg-[var(--c-surface)]'
-                : 'border-[var(--c-border)] text-[var(--c-text-muted)] hover:border-[var(--c-border-light)]'
-            )}
-          >
-            % Rate
-          </button>
-          <button
-            type="button"
-            onClick={() => onChange({ ...inputs, withdrawalMode: 'amount' })}
-            className={cn(
-              'flex-1 py-2 text-xs font-mono uppercase tracking-widest border-2 border-l-0 transition-colors cursor-pointer',
-              inputs.withdrawalMode === 'amount'
-                ? 'border-[var(--c-accent-orange)] text-[var(--c-accent-orange)] bg-[var(--c-surface)]'
-                : 'border-[var(--c-border)] text-[var(--c-text-muted)] hover:border-[var(--c-border-light)]'
-            )}
-          >
-            Fixed NZ$
-          </button>
-        </div>
-
-        {inputs.withdrawalMode === 'rate' ? (
-          <SliderField
-            label="Withdrawal rate (% of portfolio at retirement)"
-            value={inputs.withdrawalRate}
-            onChange={(v) => onChange({ ...inputs, withdrawalRate: v })}
-            min={1}
-            max={15}
-            step={0.1}
-            format={(v) => `${v.toFixed(1)}%`}
-          />
-        ) : (
-          <Field label="Annual withdrawal amount">
-            <Input
-              type="number"
-              prefix="NZ$"
-              value={inputs.annualWithdrawal}
-              onChange={(e) => onChange({ ...inputs, annualWithdrawal: parseFloat(e.target.value) || 0 })}
-              min={0}
-            />
-          </Field>
-        )}
       </Section>
     </div>
   )

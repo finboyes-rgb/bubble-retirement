@@ -50,7 +50,10 @@ function getAnnualIncome(age: number, inputs: SimulationInputs): number {
 
 export function runSimulation(inputs: SimulationInputs): SimulationResult {
   const rand = pcg32(0xDEADBEEFn)
-  const { currentAge, retirementAge, lifeExpectancy, assets, withdrawalMode, annualWithdrawal, withdrawalRate } = inputs
+  const {
+    currentAge, retirementAge, lifeExpectancy, assets,
+    annualExpenses, lumpSumExpenses,
+  } = inputs
 
   const totalYears = lifeExpectancy - currentAge
   const accumYears = retirementAge - currentAge
@@ -99,9 +102,6 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
     portfoliosByYear[0][s] = total
   }
 
-  // Track fixed withdrawals per sim (set once at retirement)
-  const fixedWithdrawals = new Array(N_SIMS).fill(0)
-
   for (let s = 0; s < N_SIMS; s++) {
     for (let y = 1; y <= totalYears; y++) {
       const age = currentAge + y
@@ -118,28 +118,37 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
       const rawTotal = assetValues[s].reduce((sum, v) => sum + v, 0)
       let totalPortfolio = rawTotal
 
-      // Add income
+      // Accumulation: income (salary/contributions) flows into portfolio
+      // Retirement: income offsets withdrawal — does NOT add to portfolio
       const income = getAnnualIncome(age, inputs)
-      totalPortfolio += income
+      const inRetirement = age > retirementAge
 
-      // Decumulation: subtract withdrawal
-      let withdrawal = 0
-      if (age > retirementAge) {
-        if (y === accumYears + 1) {
-          fixedWithdrawals[s] =
-            withdrawalMode === 'rate'
-              ? totalPortfolio * (withdrawalRate / 100)
-              : annualWithdrawal
-        }
-        withdrawal = fixedWithdrawals[s]
-        totalPortfolio -= withdrawal
+      if (!inRetirement) {
+        // Accumulation — add income as contribution
+        totalPortfolio += income
       }
 
+      // Decumulation: draw = max(0, annualExpenses − income)
+      let netWithdrawal = 0
+      if (inRetirement) {
+        netWithdrawal = Math.max(0, annualExpenses - income)
+        totalPortfolio -= netWithdrawal
+      }
+
+      // Deduct lump sum expenses (applies in any year, accumulation or retirement)
+      const lumpSum = (lumpSumExpenses ?? [])
+        .filter((e) => e.atAge === age)
+        .reduce((sum, e) => sum + e.amount, 0)
+      if (lumpSum > 0) totalPortfolio -= lumpSum
+
       // Record per-asset income/withdrawal allocation proportional to post-growth value
+      const effectiveIncome = inRetirement ? income : 0  // income allocation only shown in retirement
+      const portfolioDraw = netWithdrawal + lumpSum
       if (rawTotal > 0) {
         for (let i = 0; i < nAssets; i++) {
-          assetIncomeByYear[y][i][s] = income * assetValues[s][i] / rawTotal
-          assetWithdrawByYear[y][i][s] = withdrawal * assetValues[s][i] / rawTotal
+          const weight = assetValues[s][i] / rawTotal
+          assetIncomeByYear[y][i][s] = effectiveIncome * weight
+          assetWithdrawByYear[y][i][s] = portfolioDraw * weight
         }
       }
 
@@ -150,7 +159,7 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
         }
         totalPortfolio = 0
       } else if (totalPortfolio !== rawTotal) {
-        // Redistribute income/withdrawal delta proportionally across assets
+        // Redistribute delta proportionally across assets
         if (rawTotal > 0) {
           const scale = totalPortfolio / rawTotal
           for (let i = 0; i < nAssets; i++) {
@@ -179,20 +188,25 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
         : assetSorted
       const returnSorted = [...assetReturnByYear[y][i]].sort((a, b) => a - b)
       const incomeSorted = [...assetIncomeByYear[y][i]].sort((a, b) => a - b)
-      const withdrawSorted = [...assetWithdrawByYear[y][i]].sort((a, b) => a - b)
+      const drawSorted = [...assetWithdrawByYear[y][i]].sort((a, b) => a - b)
       return {
         assetId: a.id,
         medianValue: percentile(assetSorted, 50),
         medianOpeningBalance: percentile(openSorted, 50),
         medianReturn: percentile(returnSorted, 50),
         medianIncome: percentile(incomeSorted, 50),
-        medianWithdrawal: percentile(withdrawSorted, 50),
+        medianDraw: percentile(drawSorted, 50),
       }
     })
 
-    const totalIncome = getAnnualIncome(age, inputs)
-    // For withdrawal, use median fixed withdrawal (approximation: use first sim's value post-retirement)
-    const totalWithdrawal = age > retirementAge ? percentile([...fixedWithdrawals].sort((a, b) => a - b), 50) : 0
+    const totalIncome = age > retirementAge ? getAnnualIncome(age, inputs) : 0
+    const inRetirement = age > retirementAge
+    const totalPortfolioDraw = inRetirement
+      ? Math.max(0, annualExpenses - totalIncome)
+      : 0
+    const totalLumpSum = (lumpSumExpenses ?? [])
+      .filter((e) => e.atAge === age)
+      .reduce((sum, e) => sum + e.amount, 0)
 
     bands.push({
       age,
@@ -205,7 +219,8 @@ export function runSimulation(inputs: SimulationInputs): SimulationResult {
       p95: percentile(sorted, 95),
       assetMedians,
       totalIncome,
-      totalWithdrawal,
+      totalPortfolioDraw,
+      totalLumpSum,
     })
   }
 
