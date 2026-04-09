@@ -129,3 +129,23 @@ body::before {
 .recharts-tooltip-wrapper {
   outline: none;
 }
+
+/* Scrollbar styling — applies to overflow containers in the sidebar and results panel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--c-border);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c-border-light);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-border) transparent;
+}

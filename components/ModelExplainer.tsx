@@ -62,18 +62,23 @@ export function ModelExplainer() {
       {/* What is Monte Carlo */}
       <ExplainerCard title="What is Monte Carlo simulation?">
         <P>
-          Each time you run a simulation, Bubble runs <Highlight>5,000 independent futures</Highlight> for
+          Each time you run a simulation, Bubble runs <Highlight>1,000 independent futures</Highlight> for
           your portfolio. In each future, annual returns are drawn randomly — good years, bad years, crashes,
           booms — all consistent with the expected return and volatility you set for each asset.
         </P>
         <P>
-          The fan chart shows the spread of those 5,000 outcomes. The wide outer band covers the 5th–95th
+          The fan chart shows the spread of those 1,000 outcomes. The wide outer band covers the 5th–95th
           percentile range. The narrower inner band is the 25th–75th. The orange line is the median — half
           of all simulated futures ended up above it, half below.
         </P>
         <P>
           The <Highlight>success probability</Highlight> shown in the Summary tab is simply the percentage
-          of those 5,000 futures where your portfolio never hit zero before your life expectancy.
+          of those 1,000 futures where your portfolio never hit zero before your life expectancy.
+        </P>
+        <P>
+          Results are <Highlight>deterministic</Highlight> — the simulation uses a seeded PCG32 random
+          number generator, so the same inputs always produce identical output. Your numbers won&apos;t
+          jump around between runs.
         </P>
       </ExplainerCard>
 
@@ -191,6 +196,18 @@ export function ModelExplainer() {
             Returns are generated using a log-normal distribution (Box-Muller transform), which correctly
             models the fact that returns can&apos;t fall below −100% and tend to have a right-skewed
             distribution. Each asset is sampled independently each year.
+          </li>
+          <li>
+            <strong style={{ color: 'var(--c-text)' }}>Accumulation phase: income as contributions.</strong>{' '}
+            Before retirement, employment and other income streams are treated as annual contributions —
+            added to the portfolio at the end of each year. After retirement, income instead offsets your
+            withdrawal: only the gap between your annual expenses and income is drawn from the portfolio.
+          </li>
+          <li>
+            <strong style={{ color: 'var(--c-text)' }}>Lump sum expenses.</strong>{' '}
+            One-off expenses (e.g. a new car or renovation) are deducted from the portfolio in the year
+            they occur. This can happen at any age, before or after retirement, and is applied after
+            investment growth in that year.
           </li>
           <li>
             <strong style={{ color: 'var(--c-text)' }}>Independent assets.</strong>{' '}

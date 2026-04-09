@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import type { SimulationResult } from '@/lib/montecarlo'
-import type { SimulationInputs, AssetDefinition } from '@/lib/types'
+import type { SimulationInputs, AssetDefinition, IncomeStream, LumpSumExpense } from '@/lib/types'
 import { formatCurrency, formatPercent } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Trash2 } from 'lucide-react'
@@ -369,7 +369,9 @@ function SnapshotRow({
               letterSpacing: '0.08em',
             }}
           >
-            Projected {yearsElapsed > 0 ? `(age ${snapshot.projectionData.snapshotAge + yearsElapsed})` : '(at snapshot)'}
+            {yearsElapsed > 0
+              ? `Median projection at age ${snapshot.projectionData.snapshotAge + yearsElapsed}`
+              : `Median projection at snapshot`}
           </span>
           <span
             style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--c-text)' }}
@@ -468,74 +470,194 @@ function SnapshotRow({
         </div>
       </div>
 
-      {/* Expanded: enter actuals */}
+      {/* Expanded: income/expense context + enter actuals */}
       {expanded && (
         <div
           style={{
             borderTop: '1px solid var(--c-border)',
-            padding: '16px',
             display: 'flex',
             flexDirection: 'column',
-            gap: 12,
           }}
         >
-          <span
+          {/* Snapshot assumptions */}
+          <div
             style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 9,
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              color: 'var(--c-text-muted)',
+              padding: '14px 16px',
+              borderBottom: '1px solid var(--c-border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              background: 'rgba(0,0,0,0.15)',
             }}
           >
-            Enter actual balances as of today
-          </span>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {snapshot.projectionData.inputs.assets.map((asset: AssetDefinition) => (
-              <div key={asset.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 9,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: 'var(--c-text-muted)',
+              }}
+            >
+              Assumptions at snapshot (age {snapshot.projectionData.snapshotAge})
+            </span>
+
+            {/* Annual expenses */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--c-text-muted)' }}>
+                Annual expenses
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--c-text)', fontWeight: 600 }}>
+                {formatCurrency(snapshot.projectionData.inputs.annualExpenses, true)}/yr
+              </span>
+            </div>
+
+            {/* Income streams */}
+            {snapshot.projectionData.inputs.incomeStreams.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span
                   style={{
                     fontFamily: 'var(--font-mono)',
-                    fontSize: 11,
-                    color: 'var(--c-text)',
-                    minWidth: 120,
+                    fontSize: 9,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: 'var(--c-text-dim)',
                   }}
                 >
-                  {asset.name}
+                  Income streams
                 </span>
-                <div style={{ flex: 1, maxWidth: 200 }}>
-                  <Input
-                    type="number"
-                    prefix="NZ$"
-                    value={actualInputs[asset.id] ?? ''}
-                    onChange={(e) => onActualChange(asset.id, e.target.value)}
-                    placeholder="0"
-                    min={0}
-                  />
-                </div>
+                {snapshot.projectionData.inputs.incomeStreams.map((stream: IncomeStream) => (
+                  <div
+                    key={stream.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'baseline',
+                      paddingLeft: 8,
+                    }}
+                  >
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--c-text-muted)' }}>
+                      {stream.label}
+                      <span style={{ color: 'var(--c-text-dim)', marginLeft: 6 }}>
+                        age {stream.startAge}–{stream.endAge}
+                      </span>
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--c-text)' }}>
+                      {formatCurrency(stream.annualAmount, true)}/yr
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+
+            {/* Lump sum expenses */}
+            {snapshot.projectionData.inputs.lumpSumExpenses.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 9,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: 'var(--c-text-dim)',
+                  }}
+                >
+                  Lump sum expenses
+                </span>
+                {snapshot.projectionData.inputs.lumpSumExpenses.map((exp: LumpSumExpense) => (
+                  <div
+                    key={exp.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'baseline',
+                      paddingLeft: 8,
+                    }}
+                  >
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--c-text-muted)' }}>
+                      {exp.label}
+                      <span style={{ color: 'var(--c-text-dim)', marginLeft: 6 }}>age {exp.atAge}</span>
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--c-text)' }}>
+                      {formatCurrency(exp.amount, true)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={onSaveActuals}
-            style={{
-              alignSelf: 'flex-start',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 10,
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              padding: '8px 16px',
-              background: 'var(--c-accent-orange)',
-              color: '#17130E',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 700,
-              boxShadow: '3px 3px 0 #4A3828',
-            }}
-          >
-            Save Actuals
-          </button>
+
+          {/* Enter actuals */}
+          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 9,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: 'var(--c-text-muted)',
+              }}
+            >
+              Actual balances today — vs projected median at age {snapshot.projectionData.snapshotAge + yearsElapsed}
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {snapshot.projectionData.inputs.assets.map((asset: AssetDefinition) => {
+                const projected = snapshot.projectionData.result.bands[bandIndex]?.assetMedians?.find(
+                  (m) => m.assetId === asset.id
+                )?.medianValue ?? null
+                return (
+                  <div key={asset.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 11,
+                        color: 'var(--c-text)',
+                        minWidth: 120,
+                        flex: 1,
+                      }}
+                    >
+                      {asset.name}
+                      {projected !== null && (
+                        <span style={{ color: 'var(--c-text-dim)', fontSize: 9, marginLeft: 6 }}>
+                          proj. {formatCurrency(projected, true)}
+                        </span>
+                      )}
+                    </span>
+                    <div style={{ maxWidth: 200, width: '100%' }}>
+                      <Input
+                        type="number"
+                        prefix="NZ$"
+                        value={actualInputs[asset.id] ?? ''}
+                        onChange={(e) => onActualChange(asset.id, e.target.value)}
+                        placeholder="0"
+                        min={0}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={onSaveActuals}
+              style={{
+                alignSelf: 'flex-start',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                padding: '8px 16px',
+                background: 'var(--c-accent-orange)',
+                color: '#17130E',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 700,
+                boxShadow: '3px 3px 0 #4A3828',
+              }}
+            >
+              Save Actuals
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import * as XLSX from 'xlsx'
 import type { SimulationResult } from '@/lib/montecarlo'
 import type { SimulationInputs, YearBand } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
@@ -132,6 +133,70 @@ const METRIC_LABELS: Record<string, string> = {
   'lump-sum': 'Lump sums',
 }
 
+function exportToXlsx(result: SimulationResult, inputs: SimulationInputs) {
+  const visibleAssets = inputs.assets.filter((a) => a.visible)
+  const baseYear = new Date().getFullYear()
+  const bands = result.bands
+
+  const ageRow = ['Age', ...bands.map((b) => b.age)]
+  const yearRow = ['Year', ...bands.map((b) => baseYear + (b.age - inputs.currentAge))]
+
+  const sheetData: (string | number)[][] = [ageRow, yearRow, []]
+
+  // Assets
+  sheetData.push(['ASSETS'])
+  for (const asset of visibleAssets) {
+    sheetData.push([asset.name])
+    sheetData.push(['  Opening balance', ...bands.map((b) => {
+      const d = b.assetMedians.find((m) => m.assetId === asset.id)
+      return d ? Math.round(d.medianOpeningBalance) : 0
+    })])
+    sheetData.push(['  $ growth', ...bands.map((b) => {
+      const d = b.assetMedians.find((m) => m.assetId === asset.id)
+      return d ? Math.round(d.medianReturn) : 0
+    })])
+    sheetData.push(['  Withdrawal', ...bands.map((b) => {
+      const d = b.assetMedians.find((m) => m.assetId === asset.id)
+      return d ? Math.round(d.medianDraw) : 0
+    })])
+    sheetData.push(['  Closing balance', ...bands.map((b) => {
+      const d = b.assetMedians.find((m) => m.assetId === asset.id)
+      return d ? Math.round(d.medianValue) : 0
+    })])
+  }
+  sheetData.push(['TOTAL ASSETS (median, p50)', ...bands.map((b) => Math.round(b.p50))])
+  sheetData.push(['p10', ...bands.map((b) => Math.round(b.p10))])
+  sheetData.push(['p25', ...bands.map((b) => Math.round(b.p25))])
+  sheetData.push(['p75', ...bands.map((b) => Math.round(b.p75))])
+  sheetData.push(['p90', ...bands.map((b) => Math.round(b.p90))])
+  sheetData.push([])
+
+  // Income
+  sheetData.push(['INCOME'])
+  for (const stream of inputs.incomeStreams) {
+    sheetData.push([stream.label, ...bands.map((b) => {
+      const active = b.age >= stream.startAge && b.age <= stream.endAge
+      return active ? stream.annualAmount : 0
+    })])
+  }
+  sheetData.push(['Total income', ...bands.map((b) => Math.round(b.totalIncome))])
+  sheetData.push([])
+
+  // Expenses
+  sheetData.push(['EXPENSES'])
+  sheetData.push(['Annual expenses', ...bands.map(() => inputs.annualExpenses)])
+  sheetData.push(['Covered by income', ...bands.map((b) => Math.round(b.totalIncome))])
+  sheetData.push(['Portfolio drawdown', ...bands.map((b) => Math.round(b.totalPortfolioDraw))])
+  if (bands.some((b) => b.totalLumpSum > 0)) {
+    sheetData.push(['Lump sums', ...bands.map((b) => Math.round(b.totalLumpSum))])
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(sheetData)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Balance Sheet')
+  XLSX.writeFile(wb, `bubble-retirement-balance-sheet.xlsx`)
+}
+
 export function BalanceSheet({ result, inputs }: BalanceSheetProps) {
   const visibleAssets = inputs.assets.filter((a) => a.visible)
   const baseYear = new Date().getFullYear()
@@ -192,6 +257,36 @@ export function BalanceSheet({ result, inputs }: BalanceSheetProps) {
   }
 
   return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={() => exportToXlsx(result, inputs)}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            padding: '6px 14px',
+            border: '2px solid var(--c-border)',
+            background: 'transparent',
+            color: 'var(--c-text-muted)',
+            cursor: 'pointer',
+            boxShadow: '2px 2px 0 var(--c-border)',
+            transition: 'color 120ms ease, border-color 120ms ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--c-text)'
+            e.currentTarget.style.borderColor = 'var(--c-border-light)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--c-text-muted)'
+            e.currentTarget.style.borderColor = 'var(--c-border)'
+          }}
+        >
+          ↓ Download XLSX
+        </button>
+      </div>
     <div style={{ overflowX: 'auto' }}>
       <table style={{ borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
         <thead>
@@ -410,6 +505,7 @@ export function BalanceSheet({ result, inputs }: BalanceSheetProps) {
           })}
         </tbody>
       </table>
+    </div>
     </div>
   )
 }

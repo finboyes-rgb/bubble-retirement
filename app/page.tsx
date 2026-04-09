@@ -69,7 +69,7 @@ const DEFAULT_INPUTS: SimulationInputs = {
   annualExpenses: 60000,
 }
 
-type ResultsTab = 'forecast' | 'table' | 'balance' | 'scenarios' | 'review' | 'explainer'
+type ResultsTab = 'forecast' | 'inputs' | 'table' | 'balance' | 'scenarios' | 'review' | 'explainer'
 
 export default function Home() {
   const { data: session, status } = useSession()
@@ -153,6 +153,7 @@ export default function Home() {
 
   const TABS: Array<{ value: ResultsTab; label: string }> = [
     { value: 'forecast', label: 'Forecast' },
+    { value: 'inputs', label: 'Inputs' },
     { value: 'table', label: 'Yearly Table' },
     { value: 'balance', label: 'Balance Sheet' },
     { value: 'scenarios', label: 'Scenarios' },
@@ -304,7 +305,7 @@ export default function Home() {
           className="max-[768px]:border-r-0 max-[768px]:border-b-[2px] max-[768px]:max-h-none"
         >
           <div style={{ flex: 1 }}>
-            <InputForm inputs={inputs} onChange={handleInputChange} />
+            <InputForm inputs={inputs} onChange={handleInputChange} view="sidebar" />
           </div>
           <div
             style={{
@@ -382,6 +383,12 @@ export default function Home() {
               </button>
             ))}
           </div>
+
+          {activeTab === 'inputs' && (
+            <div className="anim-fade-in">
+              <InputForm inputs={inputs} onChange={handleInputChange} view="assets" />
+            </div>
+          )}
 
           {activeTab === 'forecast' && result && (
             <>

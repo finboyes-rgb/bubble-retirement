@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 interface InputFormProps {
   inputs: SimulationInputs
   onChange: (inputs: SimulationInputs) => void
+  view?: 'sidebar' | 'assets'
 }
 
 interface SectionProps {
@@ -420,7 +421,7 @@ function ExpenseCard({
 
 // ─── Main Form ───────────────────────────────────────────────────────────────
 
-export function InputForm({ inputs, onChange }: InputFormProps) {
+export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps) {
   const [ageErrors, setAgeErrors] = useState<{ retirementAge?: string; lifeExpectancy?: string }>({})
 
   function validateAge() {
@@ -494,6 +495,94 @@ export function InputForm({ inputs, onChange }: InputFormProps) {
     onChange({ ...inputs, lumpSumExpenses: (inputs.lumpSumExpenses ?? []).filter((e) => e.id !== id) })
   }
 
+  if (view === 'assets') {
+    return (
+      <div className="flex flex-col gap-0">
+        {/* ── Assets ── */}
+        <Section title="Assets" defaultOpen accent="orange">
+          <div className="flex flex-col gap-3">
+            {inputs.assets.map((asset) => (
+              <AssetCard
+                key={asset.id}
+                asset={asset}
+                canDelete={inputs.assets.length > 1}
+                onChange={(updated) => updateAsset(asset.id, updated)}
+                onDelete={() => deleteAsset(asset.id)}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={addAsset}
+            className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-[var(--c-border)] text-xs font-mono uppercase tracking-widest text-[var(--c-text-muted)] hover:border-[var(--c-border-light)] hover:text-[var(--c-text)] transition-colors cursor-pointer w-full justify-center"
+          >
+            <Plus size={12} />
+            Add Asset
+          </button>
+          <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
+            Checkbox = visible in chart/table. All assets are always included in the simulation.
+          </p>
+        </Section>
+
+        {/* ── Income ── */}
+        <Section title="Income" defaultOpen accent="yellow">
+          <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
+            In retirement, income offsets your withdrawal — only the remainder is drawn from your portfolio.
+          </p>
+          <div className="flex flex-col gap-3">
+            {inputs.incomeStreams.map((stream) => (
+              <IncomeCard
+                key={stream.id}
+                stream={stream}
+                canDelete={inputs.incomeStreams.length > 1}
+                onChange={(updated) => updateStream(stream.id, updated)}
+                onDelete={() => deleteStream(stream.id)}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={addStream}
+            className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-[var(--c-border)] text-xs font-mono uppercase tracking-widest text-[var(--c-text-muted)] hover:border-[var(--c-border-light)] hover:text-[var(--c-text)] transition-colors cursor-pointer w-full justify-center"
+          >
+            <Plus size={12} />
+            Add Income Stream
+          </button>
+        </Section>
+
+        {/* ── Lump Sum Expenses ── */}
+        <Section title="Lump Sum Expenses">
+          <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
+            One-off future expenses deducted from your portfolio in the year they occur (e.g. new car, home renovations).
+          </p>
+          {(inputs.lumpSumExpenses ?? []).length > 0 && (
+            <div className="flex flex-col gap-3">
+              {(inputs.lumpSumExpenses ?? []).map((expense) => (
+                <ExpenseCard
+                  key={expense.id}
+                  expense={expense}
+                  currentAge={inputs.currentAge}
+                  currentYear={currentYear}
+                  onChange={(updated) => updateExpense(expense.id, updated)}
+                  onDelete={() => deleteExpense(expense.id)}
+                />
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={addExpense}
+            className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-[var(--c-border)] text-xs font-mono uppercase tracking-widest text-[var(--c-text-muted)] hover:border-[var(--c-border-light)] hover:text-[var(--c-text)] transition-colors cursor-pointer w-full justify-center"
+          >
+            <Plus size={12} />
+            Add Expense
+          </button>
+        </Section>
+      </div>
+    )
+  }
+
+  // view === 'sidebar'
   return (
     <div className="flex flex-col gap-0">
       {/* ── Personal ── */}
@@ -532,60 +621,8 @@ export function InputForm({ inputs, onChange }: InputFormProps) {
         </Field>
       </Section>
 
-      {/* ── Assets ── */}
-      <Section title="Assets" defaultOpen accent="orange">
-        <div className="flex flex-col gap-3">
-          {inputs.assets.map((asset) => (
-            <AssetCard
-              key={asset.id}
-              asset={asset}
-              canDelete={inputs.assets.length > 1}
-              onChange={(updated) => updateAsset(asset.id, updated)}
-              onDelete={() => deleteAsset(asset.id)}
-            />
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={addAsset}
-          className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-[var(--c-border)] text-xs font-mono uppercase tracking-widest text-[var(--c-text-muted)] hover:border-[var(--c-border-light)] hover:text-[var(--c-text)] transition-colors cursor-pointer w-full justify-center"
-        >
-          <Plus size={12} />
-          Add Asset
-        </button>
-        <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
-          Checkbox = visible in chart/table. All assets are always included in the simulation.
-        </p>
-      </Section>
-
-      {/* ── Income ── */}
-      <Section title="Income" accent="yellow">
-        <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
-          In retirement, income offsets your withdrawal — only the remainder is drawn from your portfolio.
-        </p>
-        <div className="flex flex-col gap-3">
-          {inputs.incomeStreams.map((stream) => (
-            <IncomeCard
-              key={stream.id}
-              stream={stream}
-              canDelete={inputs.incomeStreams.length > 1}
-              onChange={(updated) => updateStream(stream.id, updated)}
-              onDelete={() => deleteStream(stream.id)}
-            />
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={addStream}
-          className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-[var(--c-border)] text-xs font-mono uppercase tracking-widest text-[var(--c-text-muted)] hover:border-[var(--c-border-light)] hover:text-[var(--c-text)] transition-colors cursor-pointer w-full justify-center"
-        >
-          <Plus size={12} />
-          Add Income Stream
-        </button>
-      </Section>
-
       {/* ── Annual Expenses ── */}
-      <Section title="Annual Expenses">
+      <Section title="Annual Expenses" defaultOpen>
         <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
           Your expected yearly spending in today&apos;s dollars. In retirement, your portfolio covers any gap between expenses and income.
         </p>
@@ -600,35 +637,6 @@ export function InputForm({ inputs, onChange }: InputFormProps) {
         </Field>
       </Section>
 
-      {/* ── Lump Sum Expenses ── */}
-      <Section title="Lump Sum Expenses">
-        <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
-          One-off future expenses deducted from your portfolio in the year they occur (e.g. new car, home renovations).
-        </p>
-        {(inputs.lumpSumExpenses ?? []).length > 0 && (
-          <div className="flex flex-col gap-3">
-            {(inputs.lumpSumExpenses ?? []).map((expense) => (
-              <ExpenseCard
-                key={expense.id}
-                expense={expense}
-                currentAge={inputs.currentAge}
-                currentYear={currentYear}
-                onChange={(updated) => updateExpense(expense.id, updated)}
-                onDelete={() => deleteExpense(expense.id)}
-              />
-            ))}
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={addExpense}
-          className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-[var(--c-border)] text-xs font-mono uppercase tracking-widest text-[var(--c-text-muted)] hover:border-[var(--c-border-light)] hover:text-[var(--c-text)] transition-colors cursor-pointer w-full justify-center"
-        >
-          <Plus size={12} />
-          Add Expense
-        </button>
-      </Section>
-
       {/* ── Returns ── */}
       <Section title="Returns (real, inflation-adjusted)">
         <SliderField
@@ -641,7 +649,7 @@ export function InputForm({ inputs, onChange }: InputFormProps) {
           format={(v) => `${v.toFixed(1)}%`}
         />
         <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
-          Expected return and risk profile are set per asset above.
+          Expected return and risk profile are set per asset in the Inputs tab.
         </p>
       </Section>
     </div>
