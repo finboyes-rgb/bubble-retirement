@@ -69,7 +69,7 @@ const DEFAULT_INPUTS: SimulationInputs = {
   annualExpenses: 60000,
 }
 
-type ResultsTab = 'forecast' | 'inputs' | 'table' | 'balance' | 'scenarios' | 'review' | 'explainer'
+type ResultsTab = 'forecast' | 'inputs' | 'table' | 'balance' | 'review' | 'explainer'
 
 export default function Home() {
   const { data: session, status } = useSession()
@@ -152,11 +152,10 @@ export default function Home() {
   }
 
   const TABS: Array<{ value: ResultsTab; label: string }> = [
-    { value: 'forecast', label: 'Forecast' },
+    { value: 'forecast', label: 'Forecasts' },
     { value: 'inputs', label: 'Inputs' },
     { value: 'table', label: 'Yearly Table' },
     { value: 'balance', label: 'Balance Sheet' },
-    { value: 'scenarios', label: 'Scenarios' },
     { value: 'review', label: 'Review' },
     { value: 'explainer', label: 'How It Works' },
   ]
@@ -166,12 +165,15 @@ export default function Home() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        height: '100vh',
+        overflow: 'hidden',
         background: 'var(--c-bg)',
         color: 'var(--c-text)',
         fontFamily: 'var(--font-body)',
         position: 'relative',
         zIndex: 1,
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       {/* Header */}
@@ -191,12 +193,13 @@ export default function Home() {
               fontSize: 'clamp(24px, 3vw, 36px)',
               letterSpacing: '-0.02em',
               textTransform: 'uppercase',
-              color: 'var(--c-accent-orange)',
               fontWeight: 700,
               lineHeight: 1,
             }}
           >
-            BUBBLE RETIREMENT
+            <span style={{ color: 'var(--c-accent-orange)' }}>BUBBLE</span>
+            {' '}
+            <span style={{ color: 'var(--c-text)' }}>RETIREMENT</span>
           </span>
           <span
             style={{
@@ -289,7 +292,8 @@ export default function Home() {
         style={{
           display: 'grid',
           gridTemplateColumns: 'minmax(320px, 380px) 1fr',
-          minHeight: 'calc(100vh - 57px)',
+          flex: 1,
+          minHeight: 0,
         }}
         className="max-[768px]:!block"
       >
@@ -298,7 +302,7 @@ export default function Home() {
           style={{
             borderRight: '2px solid var(--c-border)',
             overflowY: 'auto',
-            maxHeight: 'calc(100vh - 57px)',
+            maxHeight: '100%',
             display: 'flex',
             flexDirection: 'column',
           }}
@@ -348,7 +352,7 @@ export default function Home() {
             flexDirection: 'column',
             gap: 24,
             overflowY: 'auto',
-            maxHeight: 'calc(100vh - 57px)',
+            maxHeight: '100%',
           }}
         >
           {/* Tab bar */}
@@ -403,6 +407,9 @@ export default function Home() {
               <div className="anim-fade-up anim-fade-up-2">
                 <ResultsSummary result={result} inputs={inputs} />
               </div>
+              <div className="anim-fade-up anim-fade-up-3">
+                <ScenarioComparison baseInputs={inputs} bgColor={chartBg} />
+              </div>
             </>
           )}
 
@@ -415,12 +422,6 @@ export default function Home() {
           {activeTab === 'balance' && result && (
             <div className="anim-fade-in">
               <BalanceSheet result={result} inputs={inputs} />
-            </div>
-          )}
-
-          {activeTab === 'scenarios' && (
-            <div className="anim-fade-in">
-              <ScenarioComparison baseInputs={inputs} bgColor={chartBg} />
             </div>
           )}
 

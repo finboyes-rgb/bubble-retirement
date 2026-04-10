@@ -131,9 +131,11 @@ export function runSimulation(inputs: SimulationInputs, nSims: number = DEFAULT_
       }
 
       // Decumulation: draw = max(0, annualExpenses − income)
+      // Expenses grow with inflation each year from currentAge
+      const effectiveExpenses = annualExpenses * Math.pow(1 + (inputs.inflationRate ?? 0) / 100, y)
       let netWithdrawal = 0
       if (inRetirement) {
-        netWithdrawal = Math.max(0, annualExpenses - income)
+        netWithdrawal = Math.max(0, effectiveExpenses - income)
         totalPortfolio -= netWithdrawal
       }
 
@@ -203,8 +205,9 @@ export function runSimulation(inputs: SimulationInputs, nSims: number = DEFAULT_
 
     const totalIncome = age > retirementAge ? getAnnualIncome(age, inputs) : 0
     const inRetirement = age > retirementAge
+    const effectiveExpensesAtYear = annualExpenses * Math.pow(1 + (inputs.inflationRate ?? 0) / 100, y)
     const totalPortfolioDraw = inRetirement
-      ? Math.max(0, annualExpenses - totalIncome)
+      ? Math.max(0, effectiveExpensesAtYear - totalIncome)
       : 0
     const totalLumpSum = (lumpSumExpenses ?? [])
       .filter((e) => e.atAge === age)

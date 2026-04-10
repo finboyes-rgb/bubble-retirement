@@ -638,7 +638,7 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
       </Section>
 
       {/* ── Returns ── */}
-      <Section title="Returns (real, inflation-adjusted)">
+      <Section title="Inflation">
         <SliderField
           label="Inflation rate"
           value={inputs.inflationRate}

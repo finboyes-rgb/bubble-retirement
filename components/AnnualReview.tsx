@@ -306,6 +306,8 @@ function SnapshotRow({
   const yearsElapsed = currentYear - snapshot.snapshotYear
   const bandIndex = Math.max(0, Math.min(yearsElapsed, snapshot.projectionData.result.bands.length - 1))
   const projectedTotal = snapshot.projectionData.result.bands[bandIndex]?.p50 ?? 0
+  const medianAtRetirement = snapshot.projectionData.result.medianAtRetirement ?? null
+  const medianAtEnd = snapshot.projectionData.result.medianAtEnd ?? null
 
   const actualTotal = snapshot.actualData
     ? snapshot.actualData.reduce((sum, a) => sum + a.actualBalance, 0)
@@ -325,7 +327,7 @@ function SnapshotRow({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '80px 1fr 1fr 1fr auto',
+          gridTemplateColumns: '80px 1fr 1fr 1fr 1fr 1fr auto',
           alignItems: 'center',
           padding: '12px 16px',
           gap: 16,
@@ -374,7 +376,7 @@ function SnapshotRow({
               : `Median projection at snapshot`}
           </span>
           <span
-            style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--c-text)' }}
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--c-text)' }}
           >
             {formatCurrency(projectedTotal, true)}
           </span>
@@ -394,7 +396,7 @@ function SnapshotRow({
             Actual
           </span>
           <span
-            style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--c-text)' }}
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--c-text)' }}
           >
             {actualTotal !== null ? formatCurrency(actualTotal, true) : '—'}
           </span>
@@ -431,6 +433,42 @@ function SnapshotRow({
               —
             </span>
           )}
+        </div>
+
+        {/* Median at retirement */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span
+            style={{
+              fontSize: 9,
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--c-text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}
+          >
+            Median at retirement
+          </span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--c-text)' }}>
+            {medianAtRetirement !== null ? formatCurrency(medianAtRetirement, true) : '—'}
+          </span>
+        </div>
+
+        {/* Median at end of life */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span
+            style={{
+              fontSize: 9,
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--c-text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}
+          >
+            Median at end of life
+          </span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--c-text)' }}>
+            {medianAtEnd !== null ? formatCurrency(medianAtEnd, true) : '—'}
+          </span>
         </div>
 
         {/* Actions */}
