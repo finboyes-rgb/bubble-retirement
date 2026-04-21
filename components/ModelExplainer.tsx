@@ -215,10 +215,10 @@ export function ModelExplainer() {
           }}
         >
           <li>
-            <strong style={{ color: 'var(--c-text)' }}>Real (inflation-adjusted) terms.</strong>{' '}
-            All values are expressed in today&apos;s dollars. The expected return you enter should be
-            your return <em>above</em> inflation. A term deposit earning 5% nominal with 2.5% inflation
-            has a real return of roughly 2.5%.
+            <strong style={{ color: 'var(--c-text)' }}>Nominal returns, inflation-adjusted expenses.</strong>{' '}
+            Enter returns as nominal figures (e.g. a term deposit paying 5% → enter 5%). Your annual
+            expenses are entered in today&apos;s dollars and inflated each year at the inflation rate you set,
+            so the model correctly erodes purchasing power over time.
           </li>
           <li>
             <strong style={{ color: 'var(--c-text)' }}>Log-normal annual returns.</strong>{' '}

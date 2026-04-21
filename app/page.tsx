@@ -113,7 +113,7 @@ const DEFAULT_INPUTS: SimulationInputs = {
   lumpSumExpenses: [],
   inflationRate: 2.5,
   expensePhases: [
-    { id: 'phase-working', label: 'Working years', fromAge: 35, amount: 60000 },
+    { id: 'phase-working', label: 'Working years', fromAge: 35, toAge: 90, amount: 60000 },
   ],
 }
 

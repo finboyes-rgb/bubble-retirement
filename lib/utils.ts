@@ -32,12 +32,11 @@ export function getPhaseExpenses(age: number, inputs: SimulationInputs): number 
   const phases = inputs.expensePhases
   if (phases && phases.length > 0) {
     const sorted = [...phases].sort((a, b) => a.fromAge - b.fromAge)
-    let amount = sorted[0].amount
     for (const phase of sorted) {
-      if (phase.fromAge <= age) amount = phase.amount
-      else break
+      const end = phase.toAge ?? Infinity
+      if (phase.fromAge <= age && age <= end) return phase.amount
     }
-    return amount
+    return 0
   }
   return inputs.annualExpenses ?? 0
 }

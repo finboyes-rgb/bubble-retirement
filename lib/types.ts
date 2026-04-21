@@ -39,8 +39,9 @@ export interface IncomeStream {
 export interface ExpensePhase {
   id: string
   label: string
-  fromAge: number   // this phase applies from this age onwards
-  amount: number    // NZ$/year real (today's dollars)
+  fromAge: number    // inclusive start age
+  toAge?: number     // inclusive end age; if unset, applies indefinitely (legacy)
+  amount: number     // NZ$/year in today's dollars
 }
 
 export interface LumpSumExpense {

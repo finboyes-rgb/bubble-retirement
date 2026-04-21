@@ -290,7 +290,7 @@ function AssetCard({
 
       {/* Expected return — always visible */}
       <SliderField
-        label="Expected return (real, pre-tax)"
+        label="Expected return"
         value={asset.expectedReturn}
         onChange={(v) => set('expectedReturn', v)}
         min={0}
@@ -407,7 +407,7 @@ function IncomeCard({
 
       {!isLumpSum && (
         <SliderField
-          label="Real growth above inflation"
+          label="Annual growth rate"
           value={stream.growthRate ?? 0}
           onChange={(v) => set('growthRate', v)}
           min={-3}
@@ -594,6 +594,7 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
       id: crypto.randomUUID(),
       label: 'New Phase',
       fromAge: newFromAge,
+      toAge: inputs.lifeExpectancy,
       amount: last?.amount ?? 50000,
     }
     onChange({ ...inputs, expensePhases: [...(inputs.expensePhases ?? []), newPhase] })
@@ -755,13 +756,13 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
         </p>
         <div className="flex flex-col gap-2">
           {[...(inputs.expensePhases ?? [])].sort((a, b) => a.fromAge - b.fromAge).map((phase, idx, sorted) => {
-            const toAge = idx < sorted.length - 1 ? sorted[idx + 1].fromAge - 1 : inputs.lifeExpectancy
+            const displayToAge = phase.toAge ?? inputs.lifeExpectancy
             const isFirst = idx === 0
             return (
               <div key={phase.id} className="border-2 border-[var(--c-border)] bg-[var(--c-surface)] p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--c-accent-yellow)]">
-                    Age {phase.fromAge}–{toAge}
+                    Age {phase.fromAge}–{displayToAge}
                   </span>
                   {(inputs.expensePhases ?? []).length > 1 && (
                     <button
@@ -782,15 +783,25 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
                       max={inputs.lifeExpectancy - 1}
                     />
                   </Field>
-                  <Field label="NZ$/year">
+                  <Field label="To age">
                     <NumericInput
-                      prefix="NZ$"
-                      value={phase.amount}
-                      onValueChange={(v) => updatePhase(phase.id, { ...phase, amount: v })}
-                      isFloat
-                      min={0}
+                      value={phase.toAge ?? inputs.lifeExpectancy}
+                      onValueChange={(v) => updatePhase(phase.id, { ...phase, toAge: v })}
+                      min={phase.fromAge}
+                      max={inputs.lifeExpectancy}
                     />
                   </Field>
+                  <div className="col-span-2">
+                    <Field label="NZ$/year">
+                      <NumericInput
+                        prefix="NZ$"
+                        value={phase.amount}
+                        onValueChange={(v) => updatePhase(phase.id, { ...phase, amount: v })}
+                        isFloat
+                        min={0}
+                      />
+                    </Field>
+                  </div>
                 </div>
               </div>
             )

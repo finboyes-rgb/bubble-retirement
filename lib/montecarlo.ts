@@ -66,7 +66,7 @@ export function runSimulation(inputs: SimulationInputs, nSims: number = DEFAULT_
   const accumYears = retirementAge - currentAge
   const nAssets = assets.length
 
-  // Pre-compute per-asset log-normal params (real returns, after-tax)
+  // Pre-compute per-asset log-normal params (nominal returns, after-tax)
   const assetParams = assets.map((a) => {
     const effectiveReturn = a.expectedReturn * (1 - (a.taxRate ?? 0) / 100)
     return {
