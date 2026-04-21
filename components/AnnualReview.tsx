@@ -546,7 +546,13 @@ function SnapshotRow({
                 Annual expenses
               </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--c-text)', fontWeight: 600 }}>
-                {formatCurrency(snapshot.projectionData.inputs.annualExpenses, true)}/yr
+                {(snapshot.projectionData.inputs.expensePhases?.length ?? 0) > 1
+                  ? 'Multiple phases'
+                  : formatCurrency(
+                      snapshot.projectionData.inputs.expensePhases?.[0]?.amount ??
+                      snapshot.projectionData.inputs.annualExpenses ?? 0,
+                      true
+                    ) + '/yr'}
               </span>
             </div>
 

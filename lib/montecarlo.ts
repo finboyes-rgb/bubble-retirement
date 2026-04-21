@@ -4,6 +4,7 @@ import type {
   YearBand,
   AssetYearData,
 } from './types'
+import { getPhaseExpenses } from './utils'
 
 export type { SimulationInputs, SimulationResult, YearBand }
 
@@ -42,11 +43,16 @@ function percentile(sorted: number[], p: number): number {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
 }
 
-/** Total annual income from active streams at a given age */
+/** Total annual net-of-tax income from active streams at a given age, applying per-stream real growth */
 function getAnnualIncome(age: number, inputs: SimulationInputs): number {
   return inputs.incomeStreams
     .filter((s) => age >= s.startAge && age <= s.endAge)
-    .reduce((sum, s) => sum + s.annualAmount, 0)
+    .reduce((sum, s) => {
+      const yearsActive = age - s.startAge
+      const growthFactor = Math.pow(1 + (s.growthRate ?? 0) / 100, yearsActive)
+      const netAmount = s.annualAmount * (1 - (s.taxRate ?? 0) / 100)
+      return sum + netAmount * growthFactor
+    }, 0)
 }
 
 export function runSimulation(inputs: SimulationInputs, nSims: number = DEFAULT_N_SIMS): SimulationResult {
@@ -55,18 +61,20 @@ export function runSimulation(inputs: SimulationInputs, nSims: number = DEFAULT_
     currentAge, retirementAge, lifeExpectancy, assets,
     lumpSumExpenses,
   } = inputs
-  const annualExpenses = inputs.annualExpenses ?? 0
 
   const totalYears = lifeExpectancy - currentAge
   const accumYears = retirementAge - currentAge
   const nAssets = assets.length
 
-  // Pre-compute per-asset log-normal params (real returns)
-  const assetParams = assets.map((a) => ({
-    id: a.id,
-    mu_ln: Math.log(1 + a.expectedReturn / 100) - 0.5 * Math.pow(a.volatility / 100, 2),
-    sigma: a.volatility / 100,
-  }))
+  // Pre-compute per-asset log-normal params (real returns, after-tax)
+  const assetParams = assets.map((a) => {
+    const effectiveReturn = a.expectedReturn * (1 - (a.taxRate ?? 0) / 100)
+    return {
+      id: a.id,
+      mu_ln: Math.log(1 + effectiveReturn / 100) - 0.5 * Math.pow(a.volatility / 100, 2),
+      sigma: a.volatility / 100,
+    }
+  })
 
   // assetValues[simIndex][assetIndex] = current balance
   const assetValues: number[][] = Array.from({ length: nSims }, () =>
@@ -130,9 +138,9 @@ export function runSimulation(inputs: SimulationInputs, nSims: number = DEFAULT_
         totalPortfolio += income
       }
 
-      // Decumulation: draw = max(0, annualExpenses − income)
-      // Expenses grow with inflation each year from currentAge
-      const effectiveExpenses = annualExpenses * Math.pow(1 + (inputs.inflationRate ?? 0) / 100, y)
+      // Decumulation: draw = max(0, expenses − income)
+      // Expenses grow with inflation each year from currentAge (converting real → nominal)
+      const effectiveExpenses = getPhaseExpenses(age, inputs) * Math.pow(1 + (inputs.inflationRate ?? 0) / 100, y)
       let netWithdrawal = 0
       if (inRetirement) {
         netWithdrawal = Math.max(0, effectiveExpenses - income)
@@ -205,7 +213,7 @@ export function runSimulation(inputs: SimulationInputs, nSims: number = DEFAULT_
 
     const totalIncome = age > retirementAge ? getAnnualIncome(age, inputs) : 0
     const inRetirement = age > retirementAge
-    const effectiveExpensesAtYear = annualExpenses * Math.pow(1 + (inputs.inflationRate ?? 0) / 100, y)
+    const effectiveExpensesAtYear = getPhaseExpenses(age, inputs) * Math.pow(1 + (inputs.inflationRate ?? 0) / 100, y)
     const totalPortfolioDraw = inRetirement
       ? Math.max(0, effectiveExpensesAtYear - totalIncome)
       : 0

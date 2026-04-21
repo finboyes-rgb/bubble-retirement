@@ -45,6 +45,11 @@ export function ResultsSummary({ result, inputs }: ResultsSummaryProps) {
   const { successProbability, medianAtRetirement, medianAtEnd, p10AtRetirement, p90AtRetirement } =
     result
 
+  // First age at which p10 portfolio hits zero — "money runs out at 90% confidence before this age"
+  const p10DepletionAge = result.bands
+    .filter((b) => b.age > inputs.retirementAge)
+    .find((b) => b.p10 <= 0)?.age ?? null
+
   const successAccent =
     successProbability >= 90 ? 'orange' : successProbability >= 70 ? 'yellow' : 'muted'
 
@@ -91,18 +96,25 @@ export function ResultsSummary({ result, inputs }: ResultsSummaryProps) {
           </span>
         </div>
 
-        {/* Supporting 3-col row */}
-        <div className="grid grid-cols-3">
-          <div style={{ borderRight: '1px solid var(--c-border)' }}>
+        {/* Supporting stats — 2×2 grid */}
+        <div className="grid grid-cols-2">
+          <div style={{ borderRight: '1px solid var(--c-border)', borderBottom: '1px solid var(--c-border)' }}>
             <StatCard label="Median at retirement" value={formatCurrency(medianAtRetirement, true)} />
           </div>
-          <div style={{ borderRight: '1px solid var(--c-border)' }}>
+          <div style={{ borderBottom: '1px solid var(--c-border)' }}>
             <StatCard label="Median at end" value={formatCurrency(medianAtEnd, true)} />
+          </div>
+          <div style={{ borderRight: '1px solid var(--c-border)' }}>
+            <StatCard
+              label="Range at retirement (p10–p90)"
+              value={`${formatCurrency(p10AtRetirement, true)}–${formatCurrency(p90AtRetirement, true)}`}
+            />
           </div>
           <div>
             <StatCard
-              label="p10–p90 range"
-              value={`${formatCurrency(p10AtRetirement, true)}–${formatCurrency(p90AtRetirement, true)}`}
+              label="Runs dry at (worst 10%)"
+              value={p10DepletionAge != null ? `Age ${p10DepletionAge}` : `Age ${inputs.lifeExpectancy}+`}
+              accent={p10DepletionAge != null && p10DepletionAge < inputs.lifeExpectancy ? 'muted' : 'yellow'}
             />
           </div>
         </div>

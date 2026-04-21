@@ -3,7 +3,7 @@
 import * as XLSX from 'xlsx'
 import type { SimulationResult } from '@/lib/montecarlo'
 import type { SimulationInputs, YearBand } from '@/lib/types'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, getPhaseExpenses } from '@/lib/utils'
 
 interface BalanceSheetProps {
   result: SimulationResult
@@ -24,10 +24,11 @@ const COL_W = 90
 type RowDef =
   | { type: 'section-header'; label: string }
   | { type: 'asset-header'; assetId: string; label: string }
-  | { type: 'asset-metric'; assetId: string; metric: 'opening' | 'pct-growth' | 'dollar-growth' | 'withdrawal' | 'closing' }
+  | { type: 'asset-metric'; assetId: string; metric: 'opening' | 'pct-growth' | 'dollar-growth' | 'fee' | 'tax' | 'withdrawal' | 'closing' }
   | { type: 'spacer' }
   | { type: 'total-assets' }
   | { type: 'income-stream'; streamId: string; label: string }
+  | { type: 'income-tax'; streamId: string }
   | { type: 'total-income' }
   | { type: 'expense-metric'; metric: 'target-spending' | 'covered-by-income' | 'portfolio-drawdown' | 'lump-sum' }
 
@@ -65,6 +66,19 @@ function getCellContent(
             value: (data.medianReturn >= 0 ? '+' : '') + fmt(data.medianReturn),
             style: data.medianReturn >= 0 ? yellow : orange,
           }
+        case 'fee': {
+          const asset = inputs.assets.find((a) => a.id === row.assetId)
+          const feeRate = asset?.feeRate ?? 0
+          if (data.medianOpeningBalance < 0.5 || feeRate === 0) return { value: '—', style: dim }
+          return { value: '−' + fmt(data.medianOpeningBalance * feeRate / 100), style: orange }
+        }
+        case 'tax': {
+          const asset = inputs.assets.find((a) => a.id === row.assetId)
+          const taxRate = asset?.taxRate ?? 0
+          const grossReturn = data.medianOpeningBalance * (asset?.expectedReturn ?? 0) / 100
+          if (grossReturn < 0.5 || taxRate === 0) return { value: '—', style: dim }
+          return { value: '−' + fmt(grossReturn * taxRate / 100), style: orange }
+        }
         case 'withdrawal':
           return data.medianDraw < 0.5
             ? { value: '—', style: dim }
@@ -89,6 +103,15 @@ function getCellContent(
         : { value: '—', style: dim }
     }
 
+    case 'income-tax': {
+      const stream = inputs.incomeStreams.find((s) => s.id === row.streamId)
+      if (!stream) return { value: '—', style: dim }
+      const active = band.age >= stream.startAge && band.age <= stream.endAge
+      const taxRate = stream.taxRate ?? 0
+      if (!active || taxRate === 0) return { value: '—', style: dim }
+      return { value: '−' + fmt(stream.annualAmount * taxRate / 100), style: orange }
+    }
+
     case 'total-income':
       return band.totalIncome < 0.5
         ? { value: '—', style: dim }
@@ -97,7 +120,7 @@ function getCellContent(
     case 'expense-metric': {
       switch (row.metric) {
         case 'target-spending':
-          return { value: fmt(inputs.annualExpenses), style: bright }
+          return { value: fmt(getPhaseExpenses(band.age, inputs)), style: bright }
         case 'covered-by-income':
           return band.totalIncome < 0.5
             ? { value: '—', style: dim }
@@ -125,6 +148,8 @@ const METRIC_LABELS: Record<string, string> = {
   opening: 'Opening balance',
   'pct-growth': '% growth',
   'dollar-growth': '$ growth',
+  fee: 'Mgmt fees (est.)',
+  tax: 'Tax (est.)',
   withdrawal: 'Withdrawal',
   closing: 'Closing balance',
   'target-spending': 'Annual expenses',
@@ -155,6 +180,18 @@ function exportToXlsx(result: SimulationResult, inputs: SimulationInputs) {
       const d = b.assetMedians.find((m) => m.assetId === asset.id)
       return d ? Math.round(d.medianReturn) : 0
     })])
+    if ((asset.feeRate ?? 0) > 0) {
+      sheetData.push(['  Mgmt fees (est.)', ...bands.map((b) => {
+        const d = b.assetMedians.find((m) => m.assetId === asset.id)
+        return d ? -Math.round(d.medianOpeningBalance * (asset.feeRate ?? 0) / 100) : 0
+      })])
+    }
+    if ((asset.taxRate ?? 0) > 0) {
+      sheetData.push(['  Tax (est.)', ...bands.map((b) => {
+        const d = b.assetMedians.find((m) => m.assetId === asset.id)
+        return d ? -Math.round(d.medianOpeningBalance * asset.expectedReturn / 100 * (asset.taxRate ?? 0) / 100) : 0
+      })])
+    }
     sheetData.push(['  Withdrawal', ...bands.map((b) => {
       const d = b.assetMedians.find((m) => m.assetId === asset.id)
       return d ? Math.round(d.medianDraw) : 0
@@ -178,13 +215,19 @@ function exportToXlsx(result: SimulationResult, inputs: SimulationInputs) {
       const active = b.age >= stream.startAge && b.age <= stream.endAge
       return active ? stream.annualAmount : 0
     })])
+    if ((stream.taxRate ?? 0) > 0) {
+      sheetData.push([`  Tax (${stream.taxRate}%)`, ...bands.map((b) => {
+        const active = b.age >= stream.startAge && b.age <= stream.endAge
+        return active ? -Math.round(stream.annualAmount * (stream.taxRate ?? 0) / 100) : 0
+      })])
+    }
   }
   sheetData.push(['Total income', ...bands.map((b) => Math.round(b.totalIncome))])
   sheetData.push([])
 
   // Expenses
   sheetData.push(['EXPENSES'])
-  sheetData.push(['Annual expenses', ...bands.map(() => inputs.annualExpenses)])
+  sheetData.push(['Annual expenses', ...bands.map((b) => getPhaseExpenses(b.age, inputs))])
   sheetData.push(['Covered by income', ...bands.map((b) => Math.round(b.totalIncome))])
   sheetData.push(['Portfolio drawdown', ...bands.map((b) => Math.round(b.totalPortfolioDraw))])
   if (bands.some((b) => b.totalLumpSum > 0)) {
@@ -212,6 +255,8 @@ export function BalanceSheet({ result, inputs }: BalanceSheetProps) {
     rows.push({ type: 'asset-metric', assetId: asset.id, metric: 'opening' })
     rows.push({ type: 'asset-metric', assetId: asset.id, metric: 'pct-growth' })
     rows.push({ type: 'asset-metric', assetId: asset.id, metric: 'dollar-growth' })
+    if ((asset.feeRate ?? 0) > 0) rows.push({ type: 'asset-metric', assetId: asset.id, metric: 'fee' })
+    if ((asset.taxRate ?? 0) > 0) rows.push({ type: 'asset-metric', assetId: asset.id, metric: 'tax' })
     rows.push({ type: 'asset-metric', assetId: asset.id, metric: 'withdrawal' })
     rows.push({ type: 'asset-metric', assetId: asset.id, metric: 'closing' })
     rows.push({ type: 'spacer' })
@@ -222,6 +267,7 @@ export function BalanceSheet({ result, inputs }: BalanceSheetProps) {
   rows.push({ type: 'section-header', label: 'INCOME' })
   for (const stream of inputs.incomeStreams) {
     rows.push({ type: 'income-stream', streamId: stream.id, label: stream.label })
+    if ((stream.taxRate ?? 0) > 0) rows.push({ type: 'income-tax', streamId: stream.id })
   }
   rows.push({ type: 'total-income' })
   rows.push({ type: 'spacer' })
@@ -417,7 +463,7 @@ export function BalanceSheet({ result, inputs }: BalanceSheetProps) {
 
             // Data rows
             const isAssetHeader = row.type === 'asset-header'
-            const isSubMetric = row.type === 'asset-metric' || row.type === 'income-stream' || row.type === 'expense-metric'
+            const isSubMetric = row.type === 'asset-metric' || row.type === 'income-stream' || row.type === 'income-tax' || row.type === 'expense-metric'
             const isTotalRow = row.type === 'total-assets' || row.type === 'total-income'
             const isPortfolioDrawdown = row.type === 'expense-metric' && row.metric === 'portfolio-drawdown'
 
@@ -442,6 +488,11 @@ export function BalanceSheet({ result, inputs }: BalanceSheetProps) {
             } else if (row.type === 'income-stream') {
               labelText = row.label
               labelIndent = 12
+              labelColor = 'var(--c-text-muted)'
+            } else if (row.type === 'income-tax') {
+              const stream = inputs.incomeStreams.find((s) => s.id === row.streamId)
+              labelText = `Tax (${(stream?.taxRate ?? 0).toFixed(0)}%)`
+              labelIndent = 24
               labelColor = 'var(--c-text-muted)'
             } else if (row.type === 'total-income') {
               labelText = 'Total income'

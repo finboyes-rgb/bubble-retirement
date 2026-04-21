@@ -59,6 +59,35 @@ export function ModelExplainer() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+      {/* Disclaimer */}
+      <div
+        style={{
+          border: '2px solid var(--c-accent-yellow)',
+          background: 'var(--c-surface)',
+          padding: '16px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
+      >
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--c-accent-yellow)' }}>
+          Not financial advice
+        </span>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.65, color: 'var(--c-text)', margin: 0 }}>
+          Bubble Retirement is a modelling tool, not a financial advice service. All projections are
+          generated solely from the inputs you provide and are illustrative only — they are not a
+          guarantee or prediction of future investment returns. Real markets are unpredictable and
+          outcomes may differ materially from the scenarios shown.
+        </p>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, lineHeight: 1.65, color: 'var(--c-text-muted)', margin: 0 }}>
+          Under the New Zealand{' '}
+          <em>Financial Markets Conduct Act 2013</em>, personalised financial advice must be provided
+          by a licensed Financial Advice Provider. If you are making significant retirement or
+          investment decisions, please consult a licensed adviser who can take into account your
+          full personal circumstances.
+        </p>
+      </div>
+
       {/* What is Monte Carlo */}
       <ExplainerCard title="What is Monte Carlo simulation?">
         <P>
@@ -121,7 +150,7 @@ export function ModelExplainer() {
               {[
                 { key: 'fixed',        sigma: '0%',  what: 'No variance — locked return',    examples: 'Term deposits, guaranteed annuities' },
                 { key: 'conservative', sigma: '4%',  what: 'Low variance, slow and steady',  examples: 'NZ bonds, cash funds, PIE savings' },
-                { key: 'moderate',     sigma: '10%', what: 'Moderate ups and downs',         examples: 'KiwiSaver balanced/conservative' },
+                { key: 'moderate',     sigma: '10%', what: 'Moderate ups and downs',         examples: 'KiwiSaver balanced, diversified funds' },
                 { key: 'growth',       sigma: '17%', what: 'High variance, high long-run upside', examples: 'KiwiSaver growth, NZ/global equities' },
               ].map((row, i) => (
                 <tr

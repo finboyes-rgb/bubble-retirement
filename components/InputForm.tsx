@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Plus, Trash2 } from 'lucide-react'
-import type { SimulationInputs, AssetDefinition, IncomeStream, IncomeType, LumpSumExpense, RiskProfile } from '@/lib/types'
+import type { SimulationInputs, AssetDefinition, IncomeStream, IncomeType, LumpSumExpense, RiskProfile, ExpensePhase } from '@/lib/types'
 import { RISK_PROFILES } from '@/lib/types'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -137,6 +137,55 @@ function SliderField({
   )
 }
 
+/** Number input that allows clearing/retyping without snapping to 0 mid-edit */
+function NumericInput({
+  value,
+  onValueChange,
+  onBlur,
+  isFloat,
+  prefix,
+  error,
+  min,
+  max,
+}: {
+  value: number
+  onValueChange: (v: number) => void
+  onBlur?: () => void
+  isFloat?: boolean
+  prefix?: string
+  error?: string
+  min?: number
+  max?: number
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+
+  function commit(str: string) {
+    const parsed = isFloat ? parseFloat(str) : parseInt(str, 10)
+    if (!isNaN(parsed)) {
+      const lo = min ?? -Infinity
+      const hi = max ?? Infinity
+      onValueChange(Math.min(hi, Math.max(lo, parsed)))
+    }
+    setDraft(null)
+  }
+
+  return (
+    <Input
+      type="number"
+      prefix={prefix}
+      error={error}
+      min={min}
+      max={max}
+      value={draft ?? String(value)}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={(e) => { commit(e.target.value); onBlur?.() }}
+      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+      }}
+    />
+  )
+}
+
 const INCOME_TYPE_LABELS: Record<IncomeType, string> = {
   employment: 'Employment',
   rental: 'Rental',
@@ -150,17 +199,27 @@ const INCOME_TYPE_LABELS: Record<IncomeType, string> = {
 function AssetCard({
   asset,
   canDelete,
+  focusName,
   onChange,
   onDelete,
 }: {
   asset: AssetDefinition
   canDelete: boolean
+  focusName?: boolean
   onChange: (a: AssetDefinition) => void
   onDelete: () => void
 }) {
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const nameRef = useRef<HTMLInputElement>(null)
   const set = <K extends keyof AssetDefinition>(key: K, value: AssetDefinition[K]) =>
     onChange({ ...asset, [key]: value })
+
+  useEffect(() => {
+    if (focusName) {
+      nameRef.current?.focus()
+      nameRef.current?.select()
+    }
+  }, [focusName])
 
   return (
     <div className="border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3" style={{ borderLeft: '3px solid var(--c-accent-orange)' }}>
@@ -174,11 +233,13 @@ function AssetCard({
           title="Show in chart/table"
         />
         <input
+          ref={nameRef}
           type="text"
           value={asset.name}
           onChange={(e) => set('name', e.target.value)}
-          className="flex-1 bg-transparent text-sm font-mono text-[var(--c-text)] outline-none border-b border-transparent focus:border-[var(--c-border-light)] pb-0.5 transition-colors"
+          className="flex-1 bg-transparent text-sm font-mono text-[var(--c-text)] outline-none border-b border-[var(--c-border)] focus:border-[var(--c-accent-orange)] pb-0.5 transition-colors"
           placeholder="Asset name"
+          title="Click to rename"
         />
         {canDelete && (
           <button
@@ -193,11 +254,11 @@ function AssetCard({
       </div>
 
       <Field label="Current balance">
-        <Input
-          type="number"
+        <NumericInput
           prefix="NZ$"
           value={asset.currentBalance}
-          onChange={(e) => set('currentBalance', parseFloat(e.target.value) || 0)}
+          onValueChange={(v) => set('currentBalance', v)}
+          isFloat
           min={0}
         />
       </Field>
@@ -229,7 +290,7 @@ function AssetCard({
 
       {/* Expected return — always visible */}
       <SliderField
-        label="Expected return (real)"
+        label="Expected return (real, pre-tax)"
         value={asset.expectedReturn}
         onChange={(v) => set('expectedReturn', v)}
         min={0}
@@ -238,17 +299,37 @@ function AssetCard({
         format={(v) => `${v.toFixed(1)}%`}
       />
 
-      {/* Advanced: raw volatility slider */}
+      {/* Advanced: volatility, fees, tax */}
       {showAdvanced && (
-        <SliderField
-          label="Volatility (std dev)"
-          value={asset.volatility}
-          onChange={(v) => onChange({ ...asset, volatility: v, riskProfile: undefined })}
-          min={0}
-          max={40}
-          step={0.5}
-          format={(v) => `${v.toFixed(1)}%`}
-        />
+        <>
+          <SliderField
+            label="Volatility (std dev)"
+            value={asset.volatility}
+            onChange={(v) => onChange({ ...asset, volatility: v, riskProfile: undefined })}
+            min={0}
+            max={40}
+            step={0.5}
+            format={(v) => `${v.toFixed(1)}%`}
+          />
+          <SliderField
+            label="Management fee (display only)"
+            value={asset.feeRate ?? 0}
+            onChange={(v) => set('feeRate', v)}
+            min={0}
+            max={3}
+            step={0.05}
+            format={(v) => `${v.toFixed(2)}% p.a.`}
+          />
+          <SliderField
+            label="Tax rate on returns"
+            value={asset.taxRate ?? 0}
+            onChange={(v) => set('taxRate', v)}
+            min={0}
+            max={39}
+            step={1}
+            format={(v) => `${v.toFixed(0)}%`}
+          />
+        </>
       )}
 
       <button
@@ -315,22 +396,44 @@ function IncomeCard({
       </div>
 
       <Field label={isLumpSum ? 'Lump sum amount' : 'Annual amount'}>
-        <Input
-          type="number"
+        <NumericInput
           prefix="NZ$"
           value={stream.annualAmount}
-          onChange={(e) => set('annualAmount', parseFloat(e.target.value) || 0)}
+          onValueChange={(v) => set('annualAmount', v)}
+          isFloat
           min={0}
         />
       </Field>
 
+      {!isLumpSum && (
+        <SliderField
+          label="Real growth above inflation"
+          value={stream.growthRate ?? 0}
+          onChange={(v) => set('growthRate', v)}
+          min={-3}
+          max={5}
+          step={0.1}
+          format={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%/yr`}
+        />
+      )}
+
+      {!isLumpSum && (
+        <SliderField
+          label="Tax rate on income"
+          value={stream.taxRate ?? 0}
+          onChange={(v) => set('taxRate', v)}
+          min={0}
+          max={39}
+          step={1}
+          format={(v) => `${v.toFixed(0)}%`}
+        />
+      )}
+
       <div className="grid grid-cols-2 gap-2">
         <Field label={isLumpSum ? 'At age' : 'Start age'}>
-          <Input
-            type="number"
+          <NumericInput
             value={stream.startAge}
-            onChange={(e) => {
-              const v = parseInt(e.target.value) || 0
+            onValueChange={(v) => {
               set('startAge', v)
               if (isLumpSum) set('endAge', v)
             }}
@@ -340,10 +443,9 @@ function IncomeCard({
         </Field>
         {!isLumpSum && (
           <Field label="End age">
-            <Input
-              type="number"
+            <NumericInput
               value={stream.endAge}
-              onChange={(e) => set('endAge', parseInt(e.target.value) || 0)}
+              onValueChange={(v) => set('endAge', v)}
               min={18}
               max={110}
             />
@@ -395,21 +497,20 @@ function ExpenseCard({
       </div>
 
       <Field label="Amount">
-        <Input
-          type="number"
+        <NumericInput
           prefix="NZ$"
           value={expense.amount}
-          onChange={(e) => set('amount', parseFloat(e.target.value) || 0)}
+          onValueChange={(v) => set('amount', v)}
+          isFloat
           min={0}
         />
       </Field>
 
       <div className="grid grid-cols-2 gap-2">
         <Field label={`At age (${calYear})`}>
-          <Input
-            type="number"
+          <NumericInput
             value={expense.atAge}
-            onChange={(e) => set('atAge', parseInt(e.target.value) || currentAge)}
+            onValueChange={(v) => set('atAge', v)}
             min={currentAge}
             max={110}
           />
@@ -423,6 +524,10 @@ function ExpenseCard({
 
 export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps) {
   const [ageErrors, setAgeErrors] = useState<{ retirementAge?: string; lifeExpectancy?: string }>({})
+  const [newAssetId, setNewAssetId] = useState<string | null>(null)
+  useEffect(() => {
+    if (newAssetId) setNewAssetId(null)
+  }, [inputs.assets.length])
 
   function validateAge() {
     const errs: typeof ageErrors = {}
@@ -437,8 +542,9 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
   }
 
   function addAsset() {
+    const id = crypto.randomUUID()
     const newAsset: AssetDefinition = {
-      id: crypto.randomUUID(),
+      id,
       name: 'New Asset',
       currentBalance: 0,
       expectedReturn: 5.0,
@@ -447,6 +553,7 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
       visible: true,
     }
     onChange({ ...inputs, assets: [...inputs.assets, newAsset] })
+    setNewAssetId(id)
   }
 
   function deleteAsset(id: string) {
@@ -472,6 +579,28 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
 
   function deleteStream(id: string) {
     onChange({ ...inputs, incomeStreams: inputs.incomeStreams.filter((s) => s.id !== id) })
+  }
+
+  // ── Expense phase helpers ──
+  function updatePhase(id: string, updated: ExpensePhase) {
+    onChange({ ...inputs, expensePhases: (inputs.expensePhases ?? []).map((p) => p.id === id ? updated : p) })
+  }
+
+  function addPhase() {
+    const sorted = [...(inputs.expensePhases ?? [])].sort((a, b) => a.fromAge - b.fromAge)
+    const last = sorted[sorted.length - 1]
+    const newFromAge = last ? Math.min(last.fromAge + 10, inputs.lifeExpectancy - 1) : inputs.retirementAge
+    const newPhase: ExpensePhase = {
+      id: crypto.randomUUID(),
+      label: 'New Phase',
+      fromAge: newFromAge,
+      amount: last?.amount ?? 50000,
+    }
+    onChange({ ...inputs, expensePhases: [...(inputs.expensePhases ?? []), newPhase] })
+  }
+
+  function deletePhase(id: string) {
+    onChange({ ...inputs, expensePhases: (inputs.expensePhases ?? []).filter((p) => p.id !== id) })
   }
 
   // ── Lump sum expense helpers ──
@@ -506,6 +635,7 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
                 key={asset.id}
                 asset={asset}
                 canDelete={inputs.assets.length > 1}
+                focusName={asset.id === newAssetId}
                 onChange={(updated) => updateAsset(asset.id, updated)}
                 onDelete={() => deleteAsset(asset.id)}
               />
@@ -588,20 +718,18 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
       {/* ── Personal ── */}
       <Section title="Personal" defaultOpen>
         <Field label="Current age">
-          <Input
-            type="number"
+          <NumericInput
             value={inputs.currentAge}
-            onChange={(e) => onChange({ ...inputs, currentAge: parseInt(e.target.value) || 0 })}
+            onValueChange={(v) => onChange({ ...inputs, currentAge: v })}
             onBlur={validateAge}
             min={18}
             max={80}
           />
         </Field>
         <Field label="Retirement age">
-          <Input
-            type="number"
+          <NumericInput
             value={inputs.retirementAge}
-            onChange={(e) => onChange({ ...inputs, retirementAge: parseInt(e.target.value) || 0 })}
+            onValueChange={(v) => onChange({ ...inputs, retirementAge: v })}
             onBlur={validateAge}
             error={ageErrors.retirementAge}
             min={30}
@@ -609,10 +737,9 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
           />
         </Field>
         <Field label="Life expectancy">
-          <Input
-            type="number"
+          <NumericInput
             value={inputs.lifeExpectancy}
-            onChange={(e) => onChange({ ...inputs, lifeExpectancy: parseInt(e.target.value) || 0 })}
+            onValueChange={(v) => onChange({ ...inputs, lifeExpectancy: v })}
             onBlur={validateAge}
             error={ageErrors.lifeExpectancy}
             min={60}
@@ -624,17 +751,59 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
       {/* ── Annual Expenses ── */}
       <Section title="Annual Expenses" defaultOpen>
         <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
-          Your expected yearly spending in today&apos;s dollars. In retirement, your portfolio covers any gap between expenses and income.
+          Spending per life phase in today&apos;s dollars. Add phases to model how spending changes as you age — active retirement, slowing down, aged care.
         </p>
-        <Field label="Annual expenses (today's dollars)">
-          <Input
-            type="number"
-            prefix="NZ$"
-            value={inputs.annualExpenses}
-            onChange={(e) => onChange({ ...inputs, annualExpenses: parseFloat(e.target.value) || 0 })}
-            min={0}
-          />
-        </Field>
+        <div className="flex flex-col gap-2">
+          {[...(inputs.expensePhases ?? [])].sort((a, b) => a.fromAge - b.fromAge).map((phase, idx, sorted) => {
+            const toAge = idx < sorted.length - 1 ? sorted[idx + 1].fromAge - 1 : inputs.lifeExpectancy
+            const isFirst = idx === 0
+            return (
+              <div key={phase.id} className="border-2 border-[var(--c-border)] bg-[var(--c-surface)] p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--c-accent-yellow)]">
+                    Age {phase.fromAge}–{toAge}
+                  </span>
+                  {(inputs.expensePhases ?? []).length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => deletePhase(phase.id)}
+                      className="text-[var(--c-text-muted)] hover:text-[var(--c-accent-orange)] transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="From age">
+                    <NumericInput
+                      value={phase.fromAge}
+                      onValueChange={(v) => updatePhase(phase.id, { ...phase, fromAge: v })}
+                      min={isFirst ? inputs.currentAge : inputs.currentAge + 1}
+                      max={inputs.lifeExpectancy - 1}
+                    />
+                  </Field>
+                  <Field label="NZ$/year">
+                    <NumericInput
+                      prefix="NZ$"
+                      value={phase.amount}
+                      onValueChange={(v) => updatePhase(phase.id, { ...phase, amount: v })}
+                      isFloat
+                      min={0}
+                    />
+                  </Field>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={addPhase}
+          className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-[var(--c-border)] text-xs font-mono uppercase tracking-widest text-[var(--c-text-muted)] hover:border-[var(--c-border-light)] hover:text-[var(--c-text)] transition-colors cursor-pointer w-full justify-center"
+        >
+          <Plus size={12} />
+          Add Expense Phase
+        </button>
       </Section>
 
       {/* ── Returns ── */}

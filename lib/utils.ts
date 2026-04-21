@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import type { SimulationInputs } from './types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -24,4 +25,19 @@ export function formatCurrency(value: number, compact = false): string {
 
 export function formatPercent(value: number, decimals = 1): string {
   return `${value.toFixed(decimals)}%`
+}
+
+/** Returns the applicable annual expense for a given age, based on expense phases or legacy annualExpenses. */
+export function getPhaseExpenses(age: number, inputs: SimulationInputs): number {
+  const phases = inputs.expensePhases
+  if (phases && phases.length > 0) {
+    const sorted = [...phases].sort((a, b) => a.fromAge - b.fromAge)
+    let amount = sorted[0].amount
+    for (const phase of sorted) {
+      if (phase.fromAge <= age) amount = phase.amount
+      else break
+    }
+    return amount
+  }
+  return inputs.annualExpenses ?? 0
 }
