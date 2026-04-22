@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Plus, Trash2 } from 'lucide-react'
-import type { SimulationInputs, AssetDefinition, IncomeStream, IncomeType, LumpSumExpense, RiskProfile, ExpensePhase } from '@/lib/types'
+import type { SimulationInputs, AssetDefinition, IncomeStream, IncomeType, LumpSumExpense, RiskProfile, ExpensePhase, AssetType } from '@/lib/types'
 import { RISK_PROFILES } from '@/lib/types'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -194,6 +194,35 @@ const INCOME_TYPE_LABELS: Record<IncomeType, string> = {
   ongoing: 'Ongoing',
 }
 
+type AssetTypeConfig = {
+  label: string
+  defaultReturn: number
+  defaultVolatility: number
+  defaultRiskProfile?: RiskProfile
+  showReturn: boolean
+  returnLabel: string
+  showVolatility: boolean
+  showFee: boolean
+  showRiskProfile: boolean
+  showTimeToMaturity: boolean
+  maturityUnit?: 'years' | 'months'
+  showTaxRate: boolean
+}
+
+const ASSET_TYPE_CONFIG: Record<AssetType, AssetTypeConfig> = {
+  cash:            { label: 'Cash',                   defaultReturn: 0,   defaultVolatility: 0,  showReturn: false, returnLabel: 'Expected return', showVolatility: false, showFee: false, showRiskProfile: false, showTimeToMaturity: false,                         showTaxRate: false },
+  bonds:           { label: 'Bonds',                  defaultReturn: 4.5, defaultVolatility: 5,  defaultRiskProfile: 'conservative', showReturn: true,  returnLabel: 'Coupon rate',     showVolatility: true,  showFee: false, showRiskProfile: false, showTimeToMaturity: true,  maturityUnit: 'years',  showTaxRate: true  },
+  term_deposit:    { label: 'Term Deposit',            defaultReturn: 4.5, defaultVolatility: 0,  defaultRiskProfile: 'fixed',        showReturn: true,  returnLabel: 'Interest rate',   showVolatility: false, showFee: false, showRiskProfile: false, showTimeToMaturity: true,  maturityUnit: 'months', showTaxRate: true  },
+  kiwisaver:       { label: 'KiwiSaver',              defaultReturn: 5.0, defaultVolatility: 10, defaultRiskProfile: 'moderate',     showReturn: true,  returnLabel: 'Expected return', showVolatility: true,  showFee: true,  showRiskProfile: true,  showTimeToMaturity: false,                         showTaxRate: true  },
+  nz_equities:     { label: 'NZ Equities',            defaultReturn: 7.0, defaultVolatility: 17, defaultRiskProfile: 'growth',       showReturn: true,  returnLabel: 'Expected return', showVolatility: true,  showFee: false, showRiskProfile: true,  showTimeToMaturity: false,                         showTaxRate: true  },
+  au_equities:     { label: 'Australian Equities',    defaultReturn: 7.0, defaultVolatility: 17, defaultRiskProfile: 'growth',       showReturn: true,  returnLabel: 'Expected return', showVolatility: true,  showFee: false, showRiskProfile: true,  showTimeToMaturity: false,                         showTaxRate: true  },
+  global_equities: { label: 'Global Equities',        defaultReturn: 7.0, defaultVolatility: 17, defaultRiskProfile: 'growth',       showReturn: true,  returnLabel: 'Expected return', showVolatility: true,  showFee: false, showRiskProfile: true,  showTimeToMaturity: false,                         showTaxRate: true  },
+  property:        { label: 'Property',               defaultReturn: 5.0, defaultVolatility: 12, showReturn: true,  returnLabel: 'Expected return', showVolatility: true,  showFee: false, showRiskProfile: false, showTimeToMaturity: false,                         showTaxRate: true  },
+  managed_fund:    { label: 'Managed Fund',           defaultReturn: 5.0, defaultVolatility: 10, defaultRiskProfile: 'moderate',     showReturn: true,  returnLabel: 'Expected return', showVolatility: true,  showFee: true,  showRiskProfile: true,  showTimeToMaturity: false,                         showTaxRate: true  },
+  alternative:     { label: 'Alternative Investment', defaultReturn: 6.0, defaultVolatility: 15, showReturn: true,  returnLabel: 'Expected return', showVolatility: true,  showFee: false, showRiskProfile: false, showTimeToMaturity: false,                         showTaxRate: true  },
+  other:           { label: 'Other',                  defaultReturn: 5.0, defaultVolatility: 10, defaultRiskProfile: 'moderate',     showReturn: true,  returnLabel: 'Expected return', showVolatility: true,  showFee: false, showRiskProfile: true,  showTimeToMaturity: false,                         showTaxRate: true  },
+}
+
 // ─── Asset Card ──────────────────────────────────────────────────────────────
 
 function AssetCard({
@@ -220,6 +249,33 @@ function AssetCard({
       nameRef.current?.select()
     }
   }, [focusName])
+
+  const cfg: AssetTypeConfig | null = asset.assetType ? ASSET_TYPE_CONFIG[asset.assetType] : null
+
+  function handleTypeChange(type: AssetType | '') {
+    if (!type) {
+      onChange({ ...asset, assetType: undefined })
+      return
+    }
+    const c = ASSET_TYPE_CONFIG[type]
+    onChange({
+      ...asset,
+      assetType: type,
+      expectedReturn: c.defaultReturn,
+      volatility: c.defaultVolatility,
+      riskProfile: c.defaultRiskProfile,
+      name: asset.name === 'New Asset' ? c.label : asset.name,
+    })
+  }
+
+  const showReturn = !cfg || cfg.showReturn
+  const returnLabel = cfg?.returnLabel ?? 'Expected return'
+  const showRiskProfile = !showAdvanced && (!cfg || cfg.showRiskProfile)
+  const showVolatilityAdv = showAdvanced && (!cfg || cfg.showVolatility)
+  const showFeeAdv = showAdvanced && (!cfg || cfg.showFee)
+  const showTaxAdv = showAdvanced && (!cfg || cfg.showTaxRate)
+  const showTimeToMaturity = cfg?.showTimeToMaturity ?? false
+  const hasAdvanced = !cfg || cfg.showReturn || cfg.showVolatility || cfg.showFee || cfg.showTaxRate
 
   return (
     <div className="border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3" style={{ borderLeft: '3px solid var(--c-accent-orange)' }}>
@@ -253,6 +309,18 @@ function AssetCard({
         )}
       </div>
 
+      {/* Asset type selector */}
+      <select
+        value={asset.assetType ?? ''}
+        onChange={(e) => handleTypeChange(e.target.value as AssetType | '')}
+        className="bg-[var(--c-bg)] border border-[var(--c-border)] text-xs font-mono text-[var(--c-text-muted)] px-1.5 py-1 outline-none cursor-pointer w-full"
+      >
+        <option value="">Select asset type…</option>
+        {(Object.keys(ASSET_TYPE_CONFIG) as AssetType[]).map((t) => (
+          <option key={t} value={t}>{ASSET_TYPE_CONFIG[t].label}</option>
+        ))}
+      </select>
+
       <Field label="Current balance">
         <NumericInput
           prefix="NZ$"
@@ -263,8 +331,20 @@ function AssetCard({
         />
       </Field>
 
-      {/* Risk profile buttons (hidden in advanced mode) */}
-      {!showAdvanced && (
+      {/* Time to maturity — bonds and term deposits */}
+      {showTimeToMaturity && (
+        <Field label={cfg?.maturityUnit === 'months' ? 'Term (months)' : 'Time to maturity (years)'}>
+          <NumericInput
+            value={asset.timeToMaturity ?? 0}
+            onValueChange={(v) => set('timeToMaturity', v)}
+            min={0}
+            max={cfg?.maturityUnit === 'months' ? 120 : 30}
+          />
+        </Field>
+      )}
+
+      {/* Risk profile buttons — only when config allows and not in advanced mode */}
+      {showRiskProfile && (
         <div className="flex flex-col gap-1.5">
           <Label>Risk profile</Label>
           <div className="flex gap-0">
@@ -288,57 +368,63 @@ function AssetCard({
         </div>
       )}
 
-      {/* Expected return — always visible */}
-      <SliderField
-        label="Expected return"
-        value={asset.expectedReturn}
-        onChange={(v) => set('expectedReturn', v)}
-        min={0}
-        max={15}
-        step={0.5}
-        format={(v) => `${v.toFixed(1)}%`}
-      />
-
-      {/* Advanced: volatility, fees, tax */}
-      {showAdvanced && (
-        <>
-          <SliderField
-            label="Volatility (std dev)"
-            value={asset.volatility}
-            onChange={(v) => onChange({ ...asset, volatility: v, riskProfile: undefined })}
-            min={0}
-            max={40}
-            step={0.5}
-            format={(v) => `${v.toFixed(1)}%`}
-          />
-          <SliderField
-            label="Management fee (display only)"
-            value={asset.feeRate ?? 0}
-            onChange={(v) => set('feeRate', v)}
-            min={0}
-            max={3}
-            step={0.05}
-            format={(v) => `${v.toFixed(2)}% p.a.`}
-          />
-          <SliderField
-            label="Tax rate on returns"
-            value={asset.taxRate ?? 0}
-            onChange={(v) => set('taxRate', v)}
-            min={0}
-            max={39}
-            step={1}
-            format={(v) => `${v.toFixed(0)}%`}
-          />
-        </>
+      {/* Expected return / coupon rate / interest rate */}
+      {showReturn && (
+        <SliderField
+          label={returnLabel}
+          value={asset.expectedReturn}
+          onChange={(v) => set('expectedReturn', v)}
+          min={0}
+          max={15}
+          step={0.5}
+          format={(v) => `${v.toFixed(1)}%`}
+        />
       )}
 
-      <button
-        type="button"
-        onClick={() => setShowAdvanced((s) => !s)}
-        className="text-[10px] font-mono text-[var(--c-text-muted)] hover:text-[var(--c-text)] transition-colors cursor-pointer text-left"
-      >
-        {showAdvanced ? '← Presets' : 'Advanced ▸'}
-      </button>
+      {/* Advanced: volatility, fees, tax */}
+      {showVolatilityAdv && (
+        <SliderField
+          label="Volatility (std dev)"
+          value={asset.volatility}
+          onChange={(v) => onChange({ ...asset, volatility: v, riskProfile: undefined })}
+          min={0}
+          max={40}
+          step={0.5}
+          format={(v) => `${v.toFixed(1)}%`}
+        />
+      )}
+      {showFeeAdv && (
+        <SliderField
+          label="Management fee (display only)"
+          value={asset.feeRate ?? 0}
+          onChange={(v) => set('feeRate', v)}
+          min={0}
+          max={3}
+          step={0.05}
+          format={(v) => `${v.toFixed(2)}% p.a.`}
+        />
+      )}
+      {showTaxAdv && (
+        <SliderField
+          label="Tax rate on returns"
+          value={asset.taxRate ?? 0}
+          onChange={(v) => set('taxRate', v)}
+          min={0}
+          max={39}
+          step={1}
+          format={(v) => `${v.toFixed(0)}%`}
+        />
+      )}
+
+      {hasAdvanced && (
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((s) => !s)}
+          className="text-[10px] font-mono text-[var(--c-text-muted)] hover:text-[var(--c-text)] transition-colors cursor-pointer text-left"
+        >
+          {showAdvanced ? '← Presets' : 'Advanced ▸'}
+        </button>
+      )}
     </div>
   )
 }
@@ -635,7 +721,7 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
               <AssetCard
                 key={asset.id}
                 asset={asset}
-                canDelete={inputs.assets.length > 1}
+                canDelete={true}
                 focusName={asset.id === newAssetId}
                 onChange={(updated) => updateAsset(asset.id, updated)}
                 onDelete={() => deleteAsset(asset.id)}
@@ -665,7 +751,7 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
               <IncomeCard
                 key={stream.id}
                 stream={stream}
-                canDelete={inputs.incomeStreams.length > 1}
+                canDelete={true}
                 onChange={(updated) => updateStream(stream.id, updated)}
                 onDelete={() => deleteStream(stream.id)}
               />
@@ -817,8 +903,8 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
         </button>
       </Section>
 
-      {/* ── Returns ── */}
-      <Section title="Inflation">
+      {/* ── Inflation & Tax ── */}
+      <Section title="Inflation & Tax">
         <SliderField
           label="Inflation rate"
           value={inputs.inflationRate}
@@ -828,8 +914,17 @@ export function InputForm({ inputs, onChange, view = 'sidebar' }: InputFormProps
           step={0.1}
           format={(v) => `${v.toFixed(1)}%`}
         />
+        <SliderField
+          label="Income tax rate"
+          value={inputs.globalTaxRate ?? 0}
+          onChange={(v) => onChange({ ...inputs, globalTaxRate: v })}
+          min={0}
+          max={50}
+          step={1}
+          format={(v) => `${v.toFixed(0)}%`}
+        />
         <p className="text-xs text-[var(--c-text-muted)] font-mono leading-relaxed">
-          Expected return and risk profile are set per asset in the Inputs tab.
+          Income tax applies to all income streams. Override per stream in the Inputs tab. Expected return and risk profile are set per asset.
         </p>
       </Section>
     </div>

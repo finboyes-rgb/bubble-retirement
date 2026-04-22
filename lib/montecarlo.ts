@@ -50,7 +50,8 @@ function getAnnualIncome(age: number, inputs: SimulationInputs): number {
     .reduce((sum, s) => {
       const yearsActive = age - s.startAge
       const growthFactor = Math.pow(1 + (s.growthRate ?? 0) / 100, yearsActive)
-      const netAmount = s.annualAmount * (1 - (s.taxRate ?? 0) / 100)
+      const taxRate = s.taxRate ?? inputs.globalTaxRate ?? 0
+      const netAmount = s.annualAmount * (1 - taxRate / 100)
       return sum + netAmount * growthFactor
     }, 0)
 }

@@ -1,5 +1,18 @@
 export type RiskProfile = 'fixed' | 'conservative' | 'moderate' | 'growth'
 
+export type AssetType =
+  | 'cash'
+  | 'bonds'
+  | 'term_deposit'
+  | 'kiwisaver'
+  | 'nz_equities'
+  | 'au_equities'
+  | 'global_equities'
+  | 'property'
+  | 'managed_fund'
+  | 'alternative'
+  | 'other'
+
 export const RISK_PROFILES: Record<RiskProfile, {
   label: string
   description: string
@@ -21,6 +34,8 @@ export interface AssetDefinition {
   visible: boolean          // UI toggle — does not affect simulation
   taxRate?: number          // % of returns paid as tax (e.g. 28 for PIE) — applied in simulation
   feeRate?: number          // % p.a. of balance as mgmt fees — display only, already embedded in expectedReturn
+  assetType?: AssetType     // determines which fields are shown in the UI
+  timeToMaturity?: number   // years (bonds) or months (term deposits)
 }
 
 export type IncomeType = 'employment' | 'rental' | 'nz_super' | 'lump_sum' | 'ongoing'
@@ -59,6 +74,7 @@ export interface SimulationInputs {
   incomeStreams: IncomeStream[]
   lumpSumExpenses: LumpSumExpense[]
   inflationRate: number         // % — only global return param
+  globalTaxRate?: number        // % applied to income streams without their own taxRate
   annualExpenses?: number       // deprecated: kept for backward compat with saved state; prefer expensePhases
   expensePhases?: ExpensePhase[] // age-bucketed spending (replaces annualExpenses)
 }

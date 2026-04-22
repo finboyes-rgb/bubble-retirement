@@ -63,58 +63,11 @@ const DEFAULT_INPUTS: SimulationInputs = {
   currentAge: 35,
   retirementAge: 65,
   lifeExpectancy: 90,
-  assets: [
-    {
-      id: 'kiwisaver',
-      name: 'KiwiSaver',
-      currentBalance: 50000,
-      expectedReturn: 5.0,
-      volatility: 10,
-      riskProfile: 'moderate',
-      visible: true,
-    },
-    {
-      id: 'nz-equities',
-      name: 'NZ Equities',
-      currentBalance: 20000,
-      expectedReturn: 7.0,
-      volatility: 17,
-      riskProfile: 'growth',
-      visible: true,
-    },
-    {
-      id: 'term-deposit',
-      name: 'Term Deposit',
-      currentBalance: 10000,
-      expectedReturn: 1.5,
-      volatility: 0,
-      riskProfile: 'fixed',
-      visible: true,
-    },
-  ],
-  incomeStreams: [
-    {
-      id: 'employment',
-      type: 'employment',
-      label: 'Employment',
-      annualAmount: 80000,
-      startAge: 35,
-      endAge: 65,
-    },
-    {
-      id: 'nz-super',
-      type: 'nz_super',
-      label: 'NZ Super',
-      annualAmount: 25000,
-      startAge: 65,
-      endAge: 90,
-    },
-  ],
+  assets: [],
+  incomeStreams: [],
   lumpSumExpenses: [],
   inflationRate: 2.5,
-  expensePhases: [
-    { id: 'phase-working', label: 'Working years', fromAge: 35, toAge: 90, amount: 60000 },
-  ],
+  expensePhases: [],
 }
 
 type ResultsTab = 'forecast' | 'inputs' | 'table' | 'balance' | 'review' | 'explainer'
