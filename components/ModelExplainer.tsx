@@ -215,10 +215,21 @@ export function ModelExplainer() {
           }}
         >
           <li>
-            <strong style={{ color: 'var(--c-text)' }}>Nominal returns, inflation-adjusted expenses.</strong>{' '}
-            Enter returns as nominal figures (e.g. a term deposit paying 5% → enter 5%). Your annual
-            expenses are entered in today&apos;s dollars and inflated each year at the inflation rate you set,
-            so the model correctly erodes purchasing power over time.
+            <strong style={{ color: 'var(--c-text)' }}>Fully nominal model.</strong>{' '}
+            Everything runs in nominal (not inflation-adjusted) dollars. Asset returns should be entered
+            as nominal figures — e.g. a term deposit paying 5% → enter 5%. Expenses and income streams
+            (salary, NZ Super, rental) are entered in today&apos;s dollars and inflated each year at the
+            inflation rate you set. The real growth rate on an income stream applies on top of that base
+            inflation — so NZ Super with 0% real growth still rises each year in line with CPI.
+            Lump sum expenses are the exception: they are fixed nominal amounts and are not inflated.
+          </li>
+          <li>
+            <strong style={{ color: 'var(--c-text)' }}>Return and volatility assumptions.</strong>{' '}
+            The default suggestions are based on OECD total return index data (SPASTT01 series) covering
+            full available history through early 2026: NZX 4.9% return / 14.4% volatility (1967–2026),
+            ASX 6.3% / 15.5% (1958–2026), S&P 500 6.6% / 12.5% (1957–2026). These are annualised
+            nominal figures in local currency. You should adjust them to reflect your actual fund&apos;s
+            fees and your own view of future returns.
           </li>
           <li>
             <strong style={{ color: 'var(--c-text)' }}>Log-normal annual returns.</strong>{' '}
@@ -234,9 +245,9 @@ export function ModelExplainer() {
           </li>
           <li>
             <strong style={{ color: 'var(--c-text)' }}>Lump sum expenses.</strong>{' '}
-            One-off expenses (e.g. a new car or renovation) are deducted from the portfolio in the year
-            they occur. This can happen at any age, before or after retirement, and is applied after
-            investment growth in that year.
+            One-off expenses (e.g. a new car or renovation) are entered and deducted as fixed nominal
+            amounts — they are not inflated. This means a lump sum represents what you expect to
+            actually spend at that age, not today&apos;s equivalent.
           </li>
           <li>
             <strong style={{ color: 'var(--c-text)' }}>Independent assets.</strong>{' '}
@@ -251,10 +262,10 @@ export function ModelExplainer() {
             section to reflect your situation.
           </li>
           <li>
-            <strong style={{ color: 'var(--c-text)' }}>No tax modelling.</strong>{' '}
-            Returns are pre-tax. In practice, PIE funds (KiwiSaver) are taxed at your Prescribed
-            Investor Rate, and investment property returns are subject to income tax. Consider
-            reducing your expected return to account for your effective tax rate.
+            <strong style={{ color: 'var(--c-text)' }}>Tax on returns and income.</strong>{' '}
+            Each asset has an optional tax rate applied to investment returns (e.g. 28% for a PIE fund).
+            Each income stream has an optional tax rate applied to the gross amount before it offsets
+            withdrawals. If you don&apos;t set these, returns and income are treated as pre-tax.
           </li>
           <li>
             <strong style={{ color: 'var(--c-text)' }}>Portfolio floor at zero.</strong>{' '}
