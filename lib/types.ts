@@ -21,7 +21,7 @@ export const RISK_PROFILES: Record<RiskProfile, {
   fixed:        { label: 'Fixed',        description: 'Term deposit / guaranteed return', volatility: 0 },
   conservative: { label: 'Conservative', description: 'Cash & bonds',                    volatility: 4 },
   moderate:     { label: 'Balanced',     description: 'Balanced fund / KiwiSaver',       volatility: 10 },
-  growth:       { label: 'Growth',       description: 'NZ / global equities',            volatility: 17 },
+  growth:       { label: 'Growth',       description: 'NZ / global equities',            volatility: 14 },
 }
 
 export interface AssetDefinition {

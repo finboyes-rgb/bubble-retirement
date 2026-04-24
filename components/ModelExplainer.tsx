@@ -151,7 +151,7 @@ export function ModelExplainer() {
                 { key: 'fixed',        sigma: '0%',  what: 'No variance — locked return',    examples: 'Term deposits, guaranteed annuities' },
                 { key: 'conservative', sigma: '4%',  what: 'Low variance, slow and steady',  examples: 'NZ bonds, cash funds, PIE savings' },
                 { key: 'moderate',     sigma: '10%', what: 'Moderate ups and downs',         examples: 'KiwiSaver balanced, diversified funds' },
-                { key: 'growth',       sigma: '17%', what: 'High variance, high long-run upside', examples: 'KiwiSaver growth, NZ/global equities' },
+                { key: 'growth',       sigma: '14%', what: 'High variance, high long-run upside', examples: 'KiwiSaver growth, NZ/global equities' },
               ].map((row, i) => (
                 <tr
                   key={row.key}
