@@ -43,16 +43,19 @@ function percentile(sorted: number[], p: number): number {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
 }
 
-/** Total annual net-of-tax income from active streams at a given age, applying per-stream real growth */
+/** Total annual net-of-tax income from active streams at a given age.
+ *  Base inflation lifts all streams from today's dollars to nominal; growthRate adds real growth on top. */
 function getAnnualIncome(age: number, inputs: SimulationInputs): number {
   return inputs.incomeStreams
     .filter((s) => age >= s.startAge && age <= s.endAge)
     .reduce((sum, s) => {
+      const inflationYears = age - inputs.currentAge
+      const inflationFactor = Math.pow(1 + (inputs.inflationRate ?? 0) / 100, inflationYears)
       const yearsActive = age - s.startAge
       const growthFactor = Math.pow(1 + (s.growthRate ?? 0) / 100, yearsActive)
       const taxRate = s.taxRate ?? inputs.globalTaxRate ?? 0
       const netAmount = s.annualAmount * (1 - taxRate / 100)
-      return sum + netAmount * growthFactor
+      return sum + netAmount * inflationFactor * growthFactor
     }, 0)
 }
 

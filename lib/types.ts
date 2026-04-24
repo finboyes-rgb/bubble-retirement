@@ -27,8 +27,8 @@ export const RISK_PROFILES: Record<RiskProfile, {
 export interface AssetDefinition {
   id: string
   name: string
-  currentBalance: number    // NZ$ real
-  expectedReturn: number    // real % after fees, before tax e.g. 5.0
+  currentBalance: number    // NZ$ nominal (today's value)
+  expectedReturn: number    // nominal % after fees, before tax e.g. 5.0
   volatility: number        // std dev % e.g. 12.0
   riskProfile?: RiskProfile // if set, volatility was chosen via preset
   visible: boolean          // UI toggle — does not affect simulation
@@ -44,10 +44,10 @@ export interface IncomeStream {
   id: string
   type: IncomeType
   label: string
-  annualAmount: number    // NZ$/year real, pre-tax
+  annualAmount: number    // NZ$/year in today's dollars, pre-tax (inflated to nominal in simulation)
   startAge: number
   endAge: number          // for lump_sum: same as startAge (one year only)
-  growthRate?: number     // annual real growth % above inflation (e.g. NZ Super indexing)
+  growthRate?: number     // real growth % above inflation (e.g. NZ Super indexing)
   taxRate?: number        // % of income paid as tax — applied in simulation
 }
 
@@ -56,13 +56,13 @@ export interface ExpensePhase {
   label: string
   fromAge: number    // inclusive start age
   toAge?: number     // inclusive end age; if unset, applies indefinitely (legacy)
-  amount: number     // NZ$/year in today's dollars
+  amount: number     // NZ$/year in today's dollars (inflated to nominal in simulation)
 }
 
 export interface LumpSumExpense {
   id: string
   label: string
-  amount: number    // NZ$ real
+  amount: number    // NZ$ nominal — entered as a fixed future amount, not inflation-adjusted
   atAge: number     // age at which the expense is deducted
 }
 
