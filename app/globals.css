@@ -18,7 +18,7 @@
   --c-text-dim:        #3D3028;
 
   --font-body:         var(--font-space-grotesk), 'Space Grotesk', sans-serif;
-  --font-mono:         var(--font-space-mono), 'Space Mono', monospace;
+  --font-mono:         'Commit Mono', 'Courier New', monospace;
 
   --sp-1:   0.25rem;
   --sp-2:   0.5rem;
@@ -76,7 +76,7 @@ html, body {
   --color-text-muted:     var(--c-text-muted);
   --color-text-dim:       var(--c-text-dim);
   --font-sans:            var(--font-body);
-  --font-mono:            var(--font-mono);
+  --font-mono-tw:         var(--font-mono);
 }
 
 /* Light mode */
@@ -102,11 +102,12 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  z-index: 9999;
+  opacity: 0.04;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.45' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-repeat: repeat;
-  background-size: 200px 200px;
+  background-size: 300px 300px;
 }
 
 /* Entrance animations */
