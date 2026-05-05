@@ -1,5 +1,3 @@
-const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
-
 async function sendEmail(to: string, subject: string, html: string) {
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -22,6 +20,7 @@ async function sendEmail(to: string, subject: string, html: string) {
 }
 
 export async function sendVerificationEmail(to: string, token: string) {
+  const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
   const url = `${baseUrl}/api/auth/verify-email?token=${token}`
   await sendEmail(
     to,
@@ -33,6 +32,7 @@ export async function sendVerificationEmail(to: string, token: string) {
 }
 
 export async function sendPasswordResetEmail(to: string, token: string) {
+  const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
   const url = `${baseUrl}/auth/reset-password?token=${token}`
   await sendEmail(
     to,
