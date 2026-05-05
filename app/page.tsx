@@ -350,8 +350,8 @@ export default function Home() {
                 cursor: 'pointer',
                 border: '2px solid var(--c-accent-orange)',
                 background: isDirty ? 'var(--c-accent-orange)' : 'transparent',
-                color: isDirty ? '#17130E' : 'var(--c-accent-orange)',
-                boxShadow: isDirty ? '4px 4px 0 #4A3828' : 'none',
+                color: isDirty ? 'var(--c-bg)' : 'var(--c-accent-orange)',
+                boxShadow: isDirty ? 'var(--shadow)' : 'none',
                 transition: 'background 150ms ease, color 150ms ease, box-shadow 150ms ease',
               }}
             >

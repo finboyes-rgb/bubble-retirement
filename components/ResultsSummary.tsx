@@ -29,7 +29,7 @@ function StatCard({
   return (
     <div
       className="bg-[var(--c-surface)] p-4 flex flex-col gap-1"
-      style={{ transition: 'background 140ms ease', cursor: 'default' }}
+      style={{ transition: 'background var(--t-base)', cursor: 'default' }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-bg)' }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-surface)' }}
     >
@@ -70,7 +70,7 @@ export function ResultsSummary({ result, inputs }: ResultsSummaryProps) {
         {/* Hero row — success probability */}
         <div
           className="p-5 bg-[var(--c-surface)]"
-          style={{ borderBottom: '2px solid var(--c-border)', transition: 'background 140ms ease', cursor: 'default' }}
+          style={{ borderBottom: '2px solid var(--c-border)', transition: 'background var(--t-base)', cursor: 'default' }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-bg)' }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--c-surface)' }}
         >

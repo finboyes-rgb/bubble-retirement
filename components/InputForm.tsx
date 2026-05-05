@@ -281,7 +281,7 @@ function AssetCard({
   const hasAdvanced = !cfg || cfg.showReturn || cfg.showVolatility || cfg.showFee || cfg.showTaxRate
 
   return (
-    <div className="border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3" style={{ borderLeft: '3px solid var(--c-accent-orange)' }}>
+    <div className="card-hover border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3" style={{ borderLeft: '3px solid var(--c-accent-orange)', boxShadow: 'var(--shadow)' }}>
       {/* Header row */}
       <div className="flex items-center gap-2">
         <input
@@ -451,7 +451,7 @@ function IncomeCard({
   const isLumpSum = stream.type === 'lump_sum'
 
   return (
-    <div className="border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3" style={{ borderLeft: '3px solid var(--c-accent-yellow)' }}>
+    <div className="card-hover-yellow border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3" style={{ borderLeft: '3px solid var(--c-accent-yellow)', boxShadow: 'var(--shadow)' }}>
       {/* Header row */}
       <div className="flex items-center gap-2">
         <select
@@ -566,7 +566,7 @@ function ExpenseCard({
   const calYear = currentYear + (expense.atAge - currentAge)
 
   return (
-    <div className="border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3" style={{ borderLeft: '3px solid var(--c-accent-orange)' }}>
+    <div className="card-hover border-2 border-[var(--c-border)] bg-[var(--c-surface)] flex flex-col gap-3 p-3" style={{ borderLeft: '3px solid var(--c-accent-orange)', boxShadow: 'var(--shadow)' }}>
       <div className="flex items-center gap-2">
         <input
           type="text"

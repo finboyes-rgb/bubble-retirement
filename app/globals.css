@@ -10,6 +10,9 @@
   --c-border:          #4A3828;
   --c-border-light:    #6A5242;
 
+  --c-green-dark:      #1F2B1A;
+  --c-green-mid:       #3D5030;
+
   --c-accent-orange:   #FF4800;
   --c-accent-yellow:   #F5DF00;
 
@@ -43,6 +46,7 @@
 
   --t-fast:    100ms ease;
   --t-base:    180ms ease;
+  --t-slow:    320ms ease;
 
   --max-width:  1200px;
   --page-pad:   var(--sp-8);
@@ -53,12 +57,20 @@
   box-sizing: border-box;
 }
 
+h1, h2, h3, h4 {
+  font-family: var(--font-body);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
 html, body {
   background-color: var(--c-bg);
   color: var(--c-text);
   font-family: var(--font-body);
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.75;
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
@@ -149,4 +161,41 @@ body::before {
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--c-border) transparent;
+}
+
+/* ── Tag / status chips ─────────────────────────────────────────── */
+.tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 2px 6px;
+  border: 1px solid var(--c-border-light);
+  color: var(--c-text);
+  white-space: nowrap;
+}
+.tag--live    { border-color: var(--c-accent-orange); color: var(--c-accent-orange); }
+.tag--wip     { border-color: var(--c-accent-yellow); color: var(--c-accent-yellow); }
+.tag--retired { border-color: var(--c-text-dim);      color: var(--c-text-muted);    }
+
+/* ── Canonical card hover lift ──────────────────────────────────── */
+/* Apply to any interactive card. The host element needs position:relative
+   and a defined border + box-shadow to start from. */
+.card-hover {
+  transition: transform var(--t-base), box-shadow var(--t-base), border-color var(--t-base);
+}
+.card-hover:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: var(--shadow-accent);
+  border-color: var(--c-accent-orange);
+}
+.card-hover-yellow {
+  transition: transform var(--t-base), box-shadow var(--t-base), border-color var(--t-base);
+}
+.card-hover-yellow:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: var(--shadow-yellow);
+  border-color: var(--c-accent-yellow);
 }
