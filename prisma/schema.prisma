@@ -13,6 +13,11 @@ model User {
   passwordHash String
   createdAt    DateTime @default(now())
 
+  emailVerified          DateTime?
+  emailVerificationToken String?   @unique
+  passwordResetToken     String?   @unique
+  passwordResetExpiresAt DateTime?
+
   simulationState     SimulationState?
   projectionSnapshots ProjectionSnapshot[]
 }

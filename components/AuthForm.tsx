@@ -6,17 +6,38 @@ import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
-export function AuthForm() {
+const labelStyle = {
+  fontSize: 10,
+  fontFamily: 'var(--font-mono)',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.1em',
+  color: 'var(--c-text-muted)',
+}
+
+interface AuthFormProps {
+  banner?: 'verified' | 'reset' | 'invalid-token'
+}
+
+export function AuthForm({ banner }: AuthFormProps) {
   const router = useRouter()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setSuccess('')
+
+    if (mode === 'register' && password !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -32,6 +53,9 @@ export function AuthForm() {
           setLoading(false)
           return
         }
+        setSuccess('Account created! Check your email to verify before signing in.')
+        setLoading(false)
+        return
       }
 
       const result = await signIn('credentials', {
@@ -41,7 +65,10 @@ export function AuthForm() {
       })
 
       if (result?.error) {
-        setError('Invalid email or password')
+        const msg = result.error.includes('verify')
+          ? 'Please verify your email before signing in.'
+          : 'Invalid email or password.'
+        setError(msg)
         setLoading(false)
         return
       }
@@ -53,6 +80,24 @@ export function AuthForm() {
       setLoading(false)
     }
   }
+
+  function switchMode(m: 'login' | 'register') {
+    setMode(m)
+    setError('')
+    setSuccess('')
+    setConfirmPassword('')
+  }
+
+  const bannerText =
+    banner === 'verified'
+      ? 'Email verified — you can now sign in.'
+      : banner === 'reset'
+      ? 'Password updated — sign in with your new password.'
+      : banner === 'invalid-token'
+      ? 'That link is invalid or has already been used.'
+      : null
+
+  const bannerIsError = banner === 'invalid-token'
 
   return (
     <div
@@ -103,13 +148,29 @@ export function AuthForm() {
           </span>
         </div>
 
+        {/* URL-driven banner */}
+        {bannerText && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: '8px 12px',
+              border: `2px solid ${bannerIsError ? 'var(--c-accent-orange)' : 'var(--c-accent-yellow)'}`,
+              fontSize: 11,
+              fontFamily: 'var(--font-mono)',
+              color: bannerIsError ? 'var(--c-accent-orange)' : 'var(--c-accent-yellow)',
+            }}
+          >
+            {bannerText}
+          </div>
+        )}
+
         {/* Mode toggle */}
         <div style={{ display: 'flex', marginBottom: 24 }}>
           {(['login', 'register'] as const).map((m) => (
             <button
               key={m}
               type="button"
-              onClick={() => { setMode(m); setError('') }}
+              onClick={() => switchMode(m)}
               className={cn(
                 'flex-1 py-2 text-xs font-mono uppercase tracking-widest border-2 transition-colors cursor-pointer',
                 mode === m
@@ -125,17 +186,7 @@ export function AuthForm() {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label
-              style={{
-                fontSize: 10,
-                fontFamily: 'var(--font-mono)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                color: 'var(--c-text-muted)',
-              }}
-            >
-              Email
-            </label>
+            <label style={labelStyle}>Email</label>
             <Input
               type="email"
               value={email}
@@ -146,17 +197,7 @@ export function AuthForm() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label
-              style={{
-                fontSize: 10,
-                fontFamily: 'var(--font-mono)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                color: 'var(--c-text-muted)',
-              }}
-            >
-              Password
-            </label>
+            <label style={labelStyle}>Password</label>
             <Input
               type="password"
               value={password}
@@ -166,16 +207,28 @@ export function AuthForm() {
             />
           </div>
 
+          {mode === 'register' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={labelStyle}>Confirm Password</label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Retype your password"
+                required
+              />
+            </div>
+          )}
+
           {error && (
-            <p
-              style={{
-                fontSize: 11,
-                fontFamily: 'var(--font-mono)',
-                color: 'var(--c-accent-orange)',
-                margin: 0,
-              }}
-            >
+            <p style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--c-accent-orange)', margin: 0 }}>
               {error}
+            </p>
+          )}
+
+          {success && (
+            <p style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--c-accent-yellow)', margin: 0 }}>
+              {success}
             </p>
           )}
 
@@ -199,6 +252,23 @@ export function AuthForm() {
           >
             {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : 'Create Account'}
           </button>
+
+          {mode === 'login' && (
+            <a
+              href="/auth/forgot-password"
+              style={{
+                fontSize: 10,
+                fontFamily: 'var(--font-mono)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: 'var(--c-text-muted)',
+                textAlign: 'center',
+                textDecoration: 'none',
+              }}
+            >
+              Forgot password?
+            </a>
+          )}
         </form>
       </div>
     </div>
