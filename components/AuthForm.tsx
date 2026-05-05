@@ -47,9 +47,10 @@ export function AuthForm({ banner }: AuthFormProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
         })
-        const data = await res.json()
+        let data: { error?: string; message?: string } = {}
+        try { data = await res.json() } catch { /* non-JSON response */ }
         if (!res.ok) {
-          setError(data.error ?? 'Registration failed')
+          setError(data.error ?? `Registration failed (${res.status})`)
           setLoading(false)
           return
         }
@@ -65,18 +66,23 @@ export function AuthForm({ banner }: AuthFormProps) {
       })
 
       if (result?.error) {
-        const msg = result.error.includes('verify')
-          ? 'Please verify your email before signing in.'
-          : 'Invalid email or password.'
-        setError(msg)
+        // Check if the account exists but email isn't verified
+        const statusRes = await fetch(`/api/auth/email-verified?email=${encodeURIComponent(email)}`)
+        const { verified } = await statusRes.json()
+        setError(
+          verified === false
+            ? 'Please verify your email before signing in. Check your inbox.'
+            : 'Incorrect email or password.'
+        )
         setLoading(false)
         return
       }
 
       router.push('/')
       router.refresh()
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : null
+      setError(msg ?? 'Something went wrong. Please try again.')
       setLoading(false)
     }
   }
